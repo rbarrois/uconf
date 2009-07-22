@@ -1,0 +1,86 @@
+THIS: This is the doc for 'confmgr', a tool to manage one's config in a centralized way
+
+PURPOSE: confmgr is a tool to manage config, generating that required for the local machine, from generic files
+
+FILES: A confmgr 'repo' is a simple folder containing :
+    - A 'config' file, which describes how the repo is to be handled (root install path, ...)
+    - A 'cats' file, which says to which categories an host belongs
+    - A 'files' file, describing which folders belong to which category
+    - A 'files.local', version of the previous adapted to the local host
+    - A 'src' folder, which holds the versioned, raw version of files
+    - A 'dst' folder, which holds the local, built version of files
+    
+    A '~/.confmgr' file exists, which basically holds a few options and the path to the local repo
+    A '/etc/confmgr' file does the same job (global options) and can specify the path to the default repo of each user (for instance '/root/config' for root user, '/etc/news/config' for news, '~/conf' for any user, ...)
+
+FORMATS: There are basically 5 kinds of files :
+    - Normal config files. Those are the purpose of the tool. They consist of normal lines, with the following special ones :
+        - '#@cat1 cat2 -cat3' opens a new section (closing the possible previously opened one), and the lines of the section are to be included for any config matching cat1 or cat2, but not matching cat3
+            So, if cats_no are the ones starting with a dash, and cats_yes the one which don't, the section will match X (which has keywords kws), if : (for x in kws, x is not in cats_no) && (there is x in kws which is in cats_yes)
+            In other words, if X has a keyword belonging to cats_yes, and no keyword belonging to cats_no, then it matches
+            A section '#@server notebook -minimal' would match 'xel server' or 'xelnor notebook x11' but not 'vjun notebook minimal' nor 'xelphone'
+            If each cat is represented with a binary mask, a section S with cats_yes and cats_no matches X with keywords kws if :
+            (cats_yes XAND kws) AND NOT (cats_no XAND kws)
+        - '#@#comment' marks a comment
+        - '#@' marks the end of a section
+        - '#@@XXX' is translated into '#@XXX'
+        In the previous lines, the first # can also be a " or a ! or a ; or a // in order to appear as comment in lots of files
+        Those lines match the following regexps :
+        - /^[#"!;]@[[:space:]]*-?[a-zA-Z0-9_]+([[:space:]]+-?[a-zA-Z0-9_]+)*$/
+        - /^[#"!;]@#.*/
+        - /^[#"!;]@/
+        - /^[#"!;]@@(.*)/ => '#@\1'
+    - The 'cats' file : it is an ini-style file, with the following sections :
+        - [hosts] : rows hostname = cats : host hostname belongs to categories cats
+        - [meta] : rows meta_cat = sub_cats : category 'meta_cat' is to be expansed into the list of categories in sub_cats ; they are added after hosts cats, and expansed in the order of the list
+        - [conditional] : rows cond_cat = conditions : category 'cond_cat' is to be added only to hosts matching conditions ; they are added after hosts and meta, and processed in the order of the list ; cond_cat will be added if ( (cats_yes XAND kws) == cats_yes AND (cats_no XAND kws) == 0)
+    - The 'files' file : another ini-style file, with one section per category :
+        [cat] : rows of files
+        everything in the section is taken as a list of paths
+        file names are to be build
+        folder names present mean "the folder and all its subfolders"
+        folder names ending in a '/' mean "the folder and its files, but don't go any deeper"
+    - The 'files.local' file corresponds to the expansion of 'file' according to cats ; it will rebuild if 'files' or 'cats' or 'marker' is newer (for 'marker', see below)
+    - The 'config' file : It holds important data ; it is build as an ini file. Defaults are between brackets. Its sections are :
+        - [core] : all basic info :
+            - 'marker' : relative path to a file or dir which is changed any time the list of files in 'src' has changed ; optional if 'repo_type' is not 'other'
+            - 'repo_type' : 'git', 'svn', or 'other' : if 'other' is used, you have to set 'marker' ; if not specified, confmgr will try to see whether it is git or svn by looking for .git or .svn folders
+            - 'repo_root' : root of the local repo ; will be assumed to be the folder holding config if not specified
+        - [paths] : all info related to paths
+            - 'source' (src) : path to src folder
+            - 'dest' (dst) : path to "out" folder (the one that holds prepared files)
+            - 'root' (/dev/null) : mandatory ; path to root folder for installed files
+        - [install] : everything related to file installation ; everything here is optional
+            - 'default_action' (install) : any valid action
+            - 'default_user' ($USER) : default user to use for installation ; if empty, defaults to current user ; values are $USER | $OWNER | uid ($OWNER for owner of file in repo)
+            - 'default_group' ($GROUP) : idem
+            - 'default_mode' ($DST) : default mode for installed files ; best to set this to '$DST' (keep value of file in 'dst')
+            - 'default_umask' (empty) : umask to use ; by default, keeps current umask
+    - The '__paths' files : those files, present in all folders in 'src' (and potentially in each subfolder : for a file in 'files', the '__paths' file of each of its parents folder are checked in order until one containing it is found ; if none exists, confmgr outputs a warning)
+        For each file handled, there is :
+        - a row, starting at the first column, with the name of the file, followed by a variable number of spaces / tabs, followed by its relative install path (either a full name or a path ending with a /) ; spaces in the names of those files must be escaped with as '\ ', thus those rows match : 
+            /^((\\\\)*(\\ +)[^ \t])+[ \t]+([^ \t].*)$/
+        - optionally, a row, beginning with a space or a tab, defining a comma-separated list of options :
+            - default action to take (install_copy | intall_link | install_custom) : install copies the file, link makes the target a symlink (use only for binaries files or files which are already symlinks), custom tells to use the following command to install the file (on the row starting with 'install:'
+            - default action to take for building the file (build_parse, build_link, build_copy, build_custom, build_custom_pipe) : parse uses the standard mechanism, link makes the output a link to the source, copy makes a copy (if source was a symlink, output is the same symlink), custom applies the command in build: (with input and output files defined in env with $INPUT_FILE and $OUTPUT_FILE, custom_pipe does, if build: contains 'cmd', the same as custom with build = 'cat $INPUT_FILE | cmd > $OUTPUT_FILE'
+            - default user for the target file : 'user:value' with value = ($USER | $OWNER | uid) : $USER is the user running the command ; $OWNER is the owner of the file in dst, uid is a name or an uid ; this defaults to $OWNER
+            - default group for the target file : same as above
+            - default mode : 'mode:value' with value = ($SRC | $DST | mode) where $SRC means "the same as the source", $DST "the same as the built file", and mode is a mode in octal form ; this
+            - default umask : 'umask:value' with value = ($UMASK | umask) where $UMASK is the current umask (not the one set in 'config')
+        - an optional row starting with build: giving the command to use for build ; available vars are : $CATS (list of cats for current host), $INPUT_FILE, $OUTPUT_FILE (path of files), $PARSE, $PARSE_PIPE, $LINK, $COPY (aliases for the standard actions taking INPUT_FILE from -i option and OUTPUT_FILE from -o, where $PARSE_PIPE is such that $PARSE -i $INPUT_FILE -o $OUTPUT_FILE == cat $INPUT_FILE | $PARSE_PIPE > $OUTPUT_FILE)
+        - an optional row starting with install: giving the command to use for install ; available vars are : $INPUT_FILE, $OUTPUT_FILE (path of files), $COPY, $LINK (aliases for the standard actions, taking INPUT_FILE from -i and OUTPUT_FILE from -o), $USER, $GROUP, $MODE, $UMASK
+        - an optional row starting with unbuild: giving the command to return to the original file from the built one ; available vars are : $CATS (list of cats for current host), $SRC_FILE, $DST_FILE (SRC : in 'src' ; DST : in 'dst'), $UNPARSE_PIPE
+        Rows for (un)build: and install: can be continues other the next one if ending with \ ; all spaces in the beginning of the new one will be stripped. The commands are passed to the shell "as is" : no variable substitution is performes.
+
+COMMANDS: Available commands are :
+    - init : initiate a new folder ; can take a path to a repo as argument, prefixed with "git" or "svn" if protocol can't be determined from url (the presence of git or svn in the path will be used unless disabled in config file) ; confmgr init git will run a git init
+    - up | update : will update the repo if it knows how, then update files.local if needed, then build all files
+    - install : will check all files, and copy those which aren't already present, and output a warning for all non processed file (format of output can be set through config).
+    - force-install | install --force : will install all files, even if not the same as target ; might keep a backup if asked in config or with --backup, unless --no-backup is used
+    - build : will rebuild all files in dst whose source have changed
+    - diff : will output the list of files whose version in 'dst' doesn't match the installed one (and the diff)
+    - check : will give the list of files for which version in 'dst' doesn't match the one from 'src' or the installed one
+    - retrieve : will (when possible) retrieve the installed files in 'dst'
+    - back (TODO : find a better name) : will try to backport modifications in 'dst' to 'src'
+
+TODO : add doc for options, and implement :)
