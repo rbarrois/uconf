@@ -1,0 +1,27 @@
+The stucture is very modular to allow easy modification of parts of the code, or using parts of it in a python script.
+
+- VCS : there is one class for each VCS supported (currently : git, svn, raw)
+    They provide those functions :
+    - __init__(**params) : initializes an object with a dict of options specified by config
+    - init(url) : to initiate a repo, either empty or from an url
+    - isRepo(url) : tell whether url is a valid repo or not
+    - update() : updates the repo (git up, svn up)
+    - lastchange() : return the date of the last modification
+    - save() : returns a dict() of non default values to be printed to a file
+
+- BuildActions : There is one class for each BuildAction supported (currently : parse, copy, link, custom)
+    They provide those functions :
+    - __init__(cats) where cats is a list of categories for current host
+    - handle(source, dest) : handles the file given as source ; source/dest are paths to the in- and out- versions
+    - revert(source, dest) : reverts the operations on source and writes them on dest ; shall return False if it is unable to do so
+    - canRevert() : whether it can revert at list some files
+    - NAME : the name of the action (/[a-zA-Z0-9_]+/)
+
+- InstallActions : There is one class for each InstallAction supported (currently : copy, link, custom)
+    They provide those functions :
+    - __init__(cats) where cats is a list of categories for current host
+    - handle(source, dest) : proceeds to the installation of file "source" to path "dest" (user / group / mode are changed afterwards)
+    - retrieve(dest, source) : retreives the file "dest" and puts it to "source" (if possible)
+    - canRetrieve() : whether it can retrieve at least some of the files it has handled
+    - NAME : the name of the action (/[a-zA-Z0-9_]+/)
+
