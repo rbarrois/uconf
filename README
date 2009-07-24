@@ -82,5 +82,6 @@ COMMANDS: Available commands are :
     - check : will give the list of files for which version in 'dst' doesn't match the one from 'src' or the installed one
     - retrieve : will (when possible) retrieve the installed files in 'dst'
     - back (TODO : find a better name) : will try to backport modifications in 'dst' to 'src'
+    The commans install, force-install, build, diff, check, retrieve and back, if called in a subfolder of 'src' or 'dst', will act only on the files in that subfolder.
 
 TODO : add doc for options, and implement :)
