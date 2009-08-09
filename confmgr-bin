@@ -1,0 +1,10 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+# PURPOSE
+# This script is intended as a CLI front-end to the confmgr python module
+
+from confmgr import cli
+import sys
+
+cli.parse(sys.argv)
