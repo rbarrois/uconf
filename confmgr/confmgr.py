@@ -12,3 +12,7 @@ class ConfMgr:
 
     def kikoo(self):
         log.info("COIN!!!")
+        log.notice("Notice")
+        log.debug("Debug...")
+        log.warn("Warning")
+        log.crit("42")

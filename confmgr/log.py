@@ -18,6 +18,12 @@ class LogLevelHolder:
 def setLogLevel(level):
     LogLevelHolder.logLevel = level
 
+def getLogLevelFromVerbosity(verb):
+    """Converts a 'verbosity' level to a log level
+
+    Verbosity ranges from -2 (Only CRIT) to +2 (All to DEBUG)"""
+    return (10 - (5 * verb))
+
 def getLogLevel():
     return LogLevelHolder.logLevel
 

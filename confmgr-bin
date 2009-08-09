@@ -7,4 +7,4 @@
 from confmgr import cli
 import sys
 
-cli.parse(sys.argv)
+cli.parse(sys.argv[1:])
