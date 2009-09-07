@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import confmgr
+from confmgr import log
 from optparse import OptionParser
 
 def parse(argv):
@@ -25,4 +26,8 @@ def parse(argv):
     verbosity = options.verbosity - options.quietness
 
     cfmg = confmgr.ConfMgr(level = log.getLogLevelFromVerbosity(verbosity))
-    cfmg.kikoo()
+
+    if args[0] in cfmg.modules:
+        cfmg.call(args[0], args[1:])
+    else:
+        parser.error("Command %s unknown." % args[0])
