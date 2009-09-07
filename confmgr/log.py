@@ -16,7 +16,8 @@ class LogLevelHolder:
     logLevel = INFO
 
 def setLogLevel(level):
-    LogLevelHolder.logLevel = level
+    if level <= CRIT:
+        LogLevelHolder.logLevel = level
 
 def getLogLevelFromVerbosity(verb):
     """Converts a 'verbosity' level to a log level
