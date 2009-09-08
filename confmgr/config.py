@@ -1,7 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# Global imports
 import ConfigParser, os, re, subprocess
+
+# Local imports
+import log
 
 systemConfig = "/etc/confmgr.conf"
 userConfig = "~/.confmgr.conf"
@@ -68,9 +72,15 @@ class Config:
         if configfile == None:
             configfile = self.config.get("DEFAULT", "root") + "/config"
         section = "DEFAULT"
+
+        # Matches a section header
         re_section = re.compile("^\[([a-zA-Z0-9]+)\][ \t]*$")
-        re_spl_row = re.compile("^\s*(\S+)\s*[=:]\s*(\S+)\s*$")
-        re_cplx_row = re.compile("^([\S \t]+)[ \t]*[=:][ \t]*([\S \t]+)$")
+
+        # Matches a simple row : a b c d = e f g
+        re_spl_row = re.compile("^[ \t]*(\w+)[ \t]*[=:][ \t]*(\w+)[ \t]*$")
+
+        # Matches a complex row : (a && b || ! b) and (a or not b) = c d
+        re_cplx_row = re.compile("^[ \t]*([\w!()&| \t]+)[ \t]*[=:][ \t]*([\S \t]+)$")
         with open(configfile) as f:
             for line in f:
                 row = line[:-1]
@@ -131,6 +141,63 @@ class Config:
     def get(self, section, var):
         return self.config.get(section, var)
 
+def parse_cplx_pre(pre):
+    """Parses a complex precondition
+    and returns a "CplxApplier" object
+
+    expects an expression of the form :
+    (a and not b) or (c && ! (d || e))"""
+
+    log.debug("Parsing %s" % pre)
+
+    split_re = '[ \t]*([()!]|and|or|not|&&|\|\|)[ \t]*'
+    rawparts = re.split(split_re, pre)
+    parts = []
+    cats = []
+    for part in rawparts:
+        cln_part = part.strip()
+        if len(cln_part) == 0:
+            continue
+
+        if cln_part == '&&':
+            cln_part = 'and'
+        elif cln_part == '||':
+            cln_part = 'or'
+        elif cln_part == '!':
+            cln_part = 'not'
+        if cln_part not in ("and", "or", "not", "(", ")"):
+            cats.append(cln_part)
+        parts.append(cln_part)
+    return CplxApplier(rule = parts, cats = cats)
+
+class CplxApplier:
+    """Holds what is needed to apply a complex rule"""
+    def __init__(self, rule, cats):
+        self.rule = rule
+        self.cats = cats
+
+    def apply(self, cats):
+        """Applies the rule to a list of cats"""
+        # Load list of enabled cats
+        allcats = dict()
+        for cat in self.cats:
+            allcats[cat] = False
+        for cat in cats:
+            if cat in self.cats:
+                allcats[cat] = True
+
+        # Convert tokens to use allcats[cat] instead of cat
+        tokens = []
+        for token in self.rule:
+            if token not in ("and", "or", "not", "(", ")"):
+                tokens.append("allcats['" + token + "']")
+            else:
+                tokens.append(token)
+
+        # Apply the rule
+        log.debug("Rule is %s" % (" ".join(tokens)))
+        return eval(" ".join(tokens))
+
 class CatRule:
     """Holds a 'category' rule"""
 
@@ -138,34 +205,44 @@ class CatRule:
     def __init__(self, pre, post):
         """Parses a pre and post pair to build the rule"""
         self.simple = False
+        self.sons = set(post.split())
         if CatRule.re_spl_pre.match(pre) != None:
             self.simple = True
             self.spl_parents = pre.split()
-            self.spl_sons = post.split()
+        else:
+            self.rule = parse_cplx_pre(pre)
 
     def apply(self, cats):
         if self.simple:
             for cat in self.spl_parents:
                 if cat in cats:
-                    return set(self.spl_sons)
+                    return self.sons
             return set([])
         else:
-            return set([])
+            if self.rule.apply(cats):
+                return self.sons
+            else:
+                return set([])
 
 class FileRule:
     re_spl_pre = re.compile("^[\w \t]+$")
     def __init__(self, pre, post):
         self.simple = False
-        self.sons = post.split()
+        self.sons = set(post.split())
         if re_spl_pre.match(pre) != None:
             self.simple = True
             self.spl_parents = pre.split()
+        else:
+            self.rule = parse_cplx_pre(pre)
 
     def apply(self, cats):
         if self.simple:
             for cat in self.spl_parents:
                 if cat in cats:
-                    return set(self.sons)
+                    return self.sons
             return set([])
         else:
-            return set([])
+            if self.rule.apply(cats):
+                return self.sons
+            else:
+                return set([])
