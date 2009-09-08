@@ -6,8 +6,17 @@ import ConfigParser, os, re, subprocess
 systemConfig = "/etc/confmgr.conf"
 userConfig = "~/.confmgr.conf"
 
+cfg = None
+
+def getConfig():
+    conf = cfg
+    if conf == None:
+        conf = Config()
+    return conf
+
 class Config:
     """Purpose : store all config"""
+
 
     def __init__(self):
         self.config = ConfigParser.SafeConfigParser(self.getDefaults())
@@ -16,6 +25,7 @@ class Config:
         self.files = set([])
         self.__cats = []
         self.__files = []
+        self.finalized = False
 
     def getDefaults(self):
         """Returns a dict of default values"""
@@ -83,7 +93,10 @@ class Config:
                                 self.__files.append((pre.strip(), post.strip()))
 
 
-    def prepare(self):
+    def finalize(self):
+        if self.finalized:
+            return
+        self.finalized = True
         if len(self.__cats) == 0 and len(self.__files) == 0:
             self.readRepoConfig()
         self.__loadCats()

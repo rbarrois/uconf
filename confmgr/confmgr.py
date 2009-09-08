@@ -1,59 +1,74 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import sys
+import sys, os
 
 # local imports
-import log, config, core
+import log, config
 
-class ConfMgr:
-    modules = ["init", "update", "build", "install", "diff", "check", "retrieve", "backport" ]
+cfg = config.getConfig()
 
-    def __init__(self, level = log.INFO):
-        log.setLogLevel(level)
-        self.config = config.Config()
+def __checkCfg(findRoot = True):
+    if not cfg.finalized:
+        cfg.finalize()
+    if findRoot:
+        cfg.findRoot()
 
-    def call(self, command, args):
-        # Find root of current path
-        if command not in ("init"):
-            self.config.findRoot()
-        else:
-            import os
-            self.config.setRoot(os.getcwd())
+modules = ["init", "update", "build", "install", "diff", "check", "retrieve", "backport" ]
 
-        self.config.prepare()
+def __getMethod(command):
+    if command == "init":
+        return cmd_init
+    elif command == "update":
+        return cmd_update
+    elif command == "build":
+        return cmd_build
+    elif command == "install":
+        return cmd_install
+    elif command == "diff":
+        return cmd_install
+    elif command == "check":
+        return cmd_check
+    elif command == "retrieve":
+        return cmd_retrieve
+    else:
+        log.crit("Unknown command %s." % command)
+        exit(1)
 
-        if command in ("init", "update"):
-            import rcs
-            rcs = rcs.Rcs(self.config)
-            rcs._call(command, args)
-        elif command in ("build"):
-            import builder
-            bldr = builder.Builder(self.config)
-            bldr._call(command, args)
-        elif command in ("install"):
-            import installer
-            istlr = installer.Installer(self.config)
-            istlr._call(command, args)
-        elif command in ("diff", "check"):
-            import differ
-            dfr = differ.Differ(self.config)
-            dfr._call(command, args)
-        elif command in ("retrieve"):
-            import retriever
-            rtrvr = retriever.Retriever(self.config)
-            rtrvr._call(command, args)
-        elif command in ("backport"):
-            import backporter
-            bptr = backporter.Backporter(self.config)
-            bptr._call(command, args)
-        else:
-            return
-        return
 
-    def kikoo(self):
-        log.info("COIN!!!")
-        log.notice("Notice")
-        log.debug("Debug...")
-        log.warn("Warning")
-        log.crit("42")
+def call(command, args):
+    """Wrapper to confmgr.command(args)"""
+    __checkCfg(False)
+    mth = __getMethod(command)
+    if "-h" in args or "--help" in args:
+        print mth.__doc__
+    else:
+        return mth(args)
+
+def cmd_init(args):
+    __checkCfg(False)
+    cfg.setRoot(os.getcwd())
+
+def cmd_update(args):
+    __checkCfg()
+
+def cmd_build(args):
+    __checkCfg()
+    print repr(cfg.cats)
+    print "o<"
+
+def cmd_install(args):
+    __checkCfg()
+
+def cmd_check(args):
+    __checkCfg()
+
+def cmd_retrieve(args):
+    __checkCfg()
+
+def kikoo(self):
+    log.info("COIN!!!")
+    log.notice("Notice")
+    log.debug("Debug...")
+    log.warn("Warning")
+    log.crit("42")

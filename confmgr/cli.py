@@ -25,9 +25,9 @@ def parse(argv):
 
     verbosity = options.verbosity - options.quietness
 
-    cfmg = confmgr.ConfMgr(level = log.getLogLevelFromVerbosity(verbosity))
+    log.setLogLevel(log.getLogLevelFromVerbosity(verbosity))
 
-    if args[0] in cfmg.modules:
-        cfmg.call(args[0], args[1:])
+    if args[0] in confmgr.modules:
+        confmgr.call(args[0], args[1:])
     else:
         parser.error("Command %s unknown." % args[0])
