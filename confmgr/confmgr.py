@@ -8,6 +8,7 @@ import log, config
 
 cfg = config.getConfig()
 
+# {{{1 __checkCfg
 def __checkCfg(findRoot = True):
     if not cfg.finalized:
         cfg.finalize()
@@ -16,6 +17,7 @@ def __checkCfg(findRoot = True):
 
 modules = ["init", "update", "build", "install", "diff", "check", "retrieve", "backport" ]
 
+# {{{1 __getMethod
 def __getMethod(command):
     if command == "init":
         return cmd_init
@@ -35,7 +37,7 @@ def __getMethod(command):
         log.crit("Unknown command %s." % command)
         exit(1)
 
-
+# {{{1 call
 def call(command, args):
     """Wrapper to confmgr.command(args)"""
     __checkCfg(False)
@@ -45,13 +47,18 @@ def call(command, args):
     else:
         return mth(args)
 
+# {{{1 commands
+
+# {{{2 cmd_init
 def cmd_init(args):
     __checkCfg(False)
     cfg.setRoot(os.getcwd())
 
+# {{{2 cmd_update
 def cmd_update(args):
     __checkCfg()
 
+# {{{2 cmd_build
 def cmd_build(args):
     __checkCfg()
     known_files = cfg.filerules.keys()
@@ -62,15 +69,19 @@ def cmd_build(args):
             rule = cfg.filerules[file]
             rule.build()
 
+# {{{2 cmd_install
 def cmd_install(args):
     __checkCfg()
 
+# {{{2 cmd_check
 def cmd_check(args):
     __checkCfg()
 
+# {{{2 cmd_retrieve
 def cmd_retrieve(args):
     __checkCfg()
 
+# {{{1 other stuff
 def kikoo(self):
     log.info("COIN!!!")
     log.notice("Notice")

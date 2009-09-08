@@ -18,10 +18,11 @@ def getConfig():
         conf = Config()
     return conf
 
+# {{{1 class Config
 class Config:
     """Purpose : store all config"""
 
-
+    # {{{2 __init__
     def __init__(self):
         self.config = ConfigParser.SafeConfigParser(self.getDefaults())
         self.config.read([systemConfig, os.path.expanduser(userConfig)])
@@ -32,6 +33,7 @@ class Config:
         self.filerules = dict()
         self.finalized = False
 
+    # {{{2 get, getDefaults
     def get(self, section, var):
         return self.config.get(section, var)
 
@@ -42,6 +44,7 @@ class Config:
         data['root'] = os.path.expanduser("~/conf")
         return data
 
+    # {{{2 findRoot, setRoot
     def findRoot(self):
         """Finds the root of the current repo"""
         path = os.getcwd()
@@ -72,6 +75,7 @@ class Config:
         if os.path.exists(root + "/config") and os.access(root + "/config", os.R_OK):
             self.readRepoConfig(root + "/config")
 
+    # {{{2 readRepoConfig
     def readRepoConfig(self, configfile = None):
         if configfile == None:
             configfile = self.config.get("DEFAULT", "root") + "/config"
@@ -106,7 +110,7 @@ class Config:
                             elif section.lower() in ("files", "file"):
                                 self.__files.append((pre.strip(), post.strip()))
 
-
+    # {{{2 finalize
     def finalize(self):
         if self.finalized:
             return
@@ -117,6 +121,7 @@ class Config:
         self.__loadFiles()
         self.__loadRules()
 
+    # {{{2 __loadCats
     def __loadCats(self):
         """Parse category rules and apply them"""
 
@@ -133,7 +138,7 @@ class Config:
         for rule in rules:
             self.cats = self.cats | rule.apply(self.cats)
 
-
+    # {{{2 __loadFiles
     def __loadFiles(self):
         """Prepare list of files to build"""
         if len(self.cats) == 0:
@@ -144,6 +149,7 @@ class Config:
         for rule in rules:
             self.files = self.files | rule.apply(self.cats)
 
+    # {{{2 __loadRules
     def __loadRules(self):
         """Load the list of rules, file per file"""
         if len(self.files) == 0:
@@ -161,6 +167,7 @@ class Config:
         for path_file in path_files:
             self.mergePathFile(path_file)
 
+    # {{{3 mergePathFile
     def mergePathFile(self, path_file):
         commands = []
 
@@ -203,6 +210,7 @@ class Config:
                 options = parts[2]
             self.filerules[file] = FileRule(file, target, options)
 
+# {{{1 def filenameSplit(txt, amount)
 def filenameSplit(txt, amount = 0):
     """Splits a text into at most amount filenames strings
 
@@ -245,6 +253,7 @@ def filenameSplit(txt, amount = 0):
         parts.append(cur)
     return parts
 
+# {{{1 class FileRule
 class FileRule:
     def __init__(self, file, target, options = ''):
         self.file = file
@@ -259,6 +268,7 @@ class FileRule:
         cfg = getConfig()
         print "o< o< o< %s >o >o >o" % self.file
 
+# {{{1 def parse_cplx_pre(pre)
 def parse_cplx_pre(pre):
     """Parses a complex precondition
     and returns a "CplxApplier" object
@@ -288,6 +298,7 @@ def parse_cplx_pre(pre):
         parts.append(cln_part)
     return CplxApplier(rule = parts, cats = cats)
 
+# {{{1 class CplxApplier
 class CplxApplier:
     """Holds what is needed to apply a complex rule"""
     def __init__(self, rule, cats):
@@ -316,6 +327,7 @@ class CplxApplier:
         log.debug("Rule is %s" % (" ".join(tokens)))
         return eval(" ".join(tokens))
 
+# {{{1 class CatExpandRule
 class CatExpandRule:
     """Holds a 'category' rule"""
 
@@ -342,6 +354,7 @@ class CatExpandRule:
             else:
                 return set([])
 
+# {{{1 class FileExpandRule
 class FileExpandRule:
     re_spl_pre = re.compile("^[\w \t]+$")
 
