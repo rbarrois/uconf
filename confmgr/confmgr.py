@@ -54,8 +54,13 @@ def cmd_update(args):
 
 def cmd_build(args):
     __checkCfg()
-    print repr(cfg.cats)
-    print "o<"
+    known_files = cfg.filerules.keys()
+    for file in cfg.files:
+        if file not in known_files:
+            log.warn("No rules given for file %s, ignoring." % file)
+        else:
+            rule = cfg.filerules[file]
+            rule.build()
 
 def cmd_install(args):
     __checkCfg()
