@@ -4,16 +4,17 @@
 import sys, os
 
 # local imports
-import log, config
+import log, config, parsers
 
-cfg = config.getConfig()
 
 # {{{1 __checkCfg
 def __checkCfg(findRoot = True):
+    cfg = config.getConfig()
     if not cfg.finalized:
         cfg.finalize()
     if findRoot:
         cfg.findRoot()
+    return cfg
 
 modules = ["init", "update", "build", "install", "diff", "check", "retrieve", "backport" ]
 
@@ -51,16 +52,16 @@ def call(command, args):
 
 # {{{2 cmd_init
 def cmd_init(args):
-    __checkCfg(False)
+    cfg = __checkCfg(False)
     cfg.setRoot(os.getcwd())
 
 # {{{2 cmd_update
 def cmd_update(args):
-    __checkCfg()
+    cfg = __checkCfg()
 
 # {{{2 cmd_build
 def cmd_build(args):
-    __checkCfg()
+    cfg = __checkCfg()
     known_files = cfg.filerules.keys()
     for file in cfg.files:
         if file not in known_files:
@@ -71,15 +72,15 @@ def cmd_build(args):
 
 # {{{2 cmd_install
 def cmd_install(args):
-    __checkCfg()
+    cfg = __checkCfg()
 
 # {{{2 cmd_check
 def cmd_check(args):
-    __checkCfg()
+    cfg = __checkCfg()
 
 # {{{2 cmd_retrieve
 def cmd_retrieve(args):
-    __checkCfg()
+    cfg = __checkCfg()
 
 # {{{1 other stuff
 def kikoo(self):
