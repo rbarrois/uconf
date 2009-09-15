@@ -5,7 +5,7 @@
 import os, re
 
 # Local imports
-import log, config, parsers
+import log, config, actions
 
 # {{{1 def getTime()
 def getTime(file):
@@ -16,8 +16,8 @@ def getTime(file):
 # {{{1 class FileRule
 class FileRule:
     def __init__(self, file, target, options = ''):
-        self.file = os.path.join('src', file)
-        self.target = os.path.join('dst', file)
+        self.file = file
+        self.target = target
         self.parseOptions(options)
         log.debug("Added rule for '%s' : target is '%s', with options %s" % (file, target, options))
 
@@ -25,21 +25,69 @@ class FileRule:
         self.options = options.split(',')
 
     def build(self):
-        # parsers is imported later, otherwise we have cyclic dependancies
-        import parsers
         cfg = config.getConfig()
         # TODO : check 'config' timestamp as well
         root = cfg.getRoot()
-        src_time = getTime(self.file)
-        if not os.path.exists(os.path.join(root, self.target)):
+        src = os.path.join(root, 'src', self.file)
+        dst = os.path.join(root, 'dst', self.file)
+        src_time = getTime(src)
+        if not os.path.exists(dst):
             log.notice("Target for %s doesn't exist yet." % self.file)
-            parsers.std_build(self.file, self.target)
+            actions.std_build(src, dst)
         else:
-            dst_time = getTime(self.target)
+            dst_time = getTime(dst)
             if dst_time < src_time:
                 log.notice("Source file %s has changed, updating %s" % (self.file, self.target))
-            parsers.std_build(self.file, self.target)
-        print "o< o< o< %s >o >o >o" % self.file
+            actions.std_build(src, dst)
+
+    def install(self):
+        cfg = config.getConfig()
+        root = cfg.getRoot()
+        install_root = cfg.get("DEFAULT", "install_root")
+        src = os.path.join(root, 'dst', self.file)
+        dst = os.path.join(os.path.expanduser(install_root), self.target)
+        src_time = getTime(src)
+        if not os.path.exists(dst):
+            log.notice("Target for %s doesn't exist yet." % src)
+            actions.std_install(src, dst)
+        else:
+            dst_time = getTime(dst)
+            if src_time < dst_time:
+                log.warn("Target %s has changed more recently than %s !!!" % (dst, src))
+            actions.std_install(src, dst)
+
+    def retrieve(self):
+        cfg = config.getConfig()
+        root = cfg.getRoot()
+        install_root = cfg.get("DEFAULT", "install_root")
+        installed = os.path.join(os.path.expanduser(install_root), self.target)
+        src = os.path.join(root, 'dst', self.file)
+        if not os.path.exists(src):
+            log.warn("Trying to retrieve %s, not available in repo !!" % installed)
+            actions.std_retrieve(installed, src)
+        elif not os.path.exists(installed):
+            log.crit("Unable to retrieve non-existing file %s" % installed)
+        else:
+            actions.std_retrieve(installed, src)
+
+    def backport(self):
+        cfg = config.getConfig()
+        root = cfg.getRoot()
+        src = os.path.join(root, 'src', self.file)
+        dst = os.path.join(root, 'dst', self.file)
+        if not os.path.exists(src):
+            log.warn("Trying to backport to %s, which doesn't exist !" % src)
+            actions.std_copy(dst, src)
+        elif not os.path.exists(dst):
+            log.crit("Unable to backport non-existing file %s" % dst)
+        else:
+            time_src = getTime(src)
+            time_dst = getTime(dst)
+            if time_src > time_dst:
+                log.warn("Warning : backporting %s onto %s which changed more recently" % (dst, src))
+            actions.std_backport(src, dst)
+
+
 
 # {{{1 def filenameSplit(txt, amount)
 def filenameSplit(txt, amount = 0):

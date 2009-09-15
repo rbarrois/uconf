@@ -4,7 +4,7 @@
 import sys, os
 
 # local imports
-import log, config, parsers
+import log, config, actions
 
 
 # {{{1 __checkCfg
@@ -34,6 +34,8 @@ def __getMethod(command):
         return cmd_check
     elif command == "retrieve":
         return cmd_retrieve
+    elif command == "backport":
+        return cmd_backport
     else:
         log.crit("Unknown command %s." % command)
         exit(1)
@@ -73,6 +75,13 @@ def cmd_build(args):
 # {{{2 cmd_install
 def cmd_install(args):
     cfg = __checkCfg()
+    known_files = cfg.filerules.keys()
+    for file in cfg.files:
+        if file not in known_files:
+            log.warn("No rules given for file %s, ignoring." % file)
+        else:
+            rule = cfg.filerules[file]
+            rule.install()
 
 # {{{2 cmd_check
 def cmd_check(args):
@@ -81,6 +90,23 @@ def cmd_check(args):
 # {{{2 cmd_retrieve
 def cmd_retrieve(args):
     cfg = __checkCfg()
+    known_files = cfg.filerules.keys()
+    for file in cfg.files:
+        if file not in known_files:
+            log.warn("No rules given for file %s, ignoring." % file)
+        else:
+            rule = cfg.filerules[file]
+            rule.retrieve()
+
+def cmd_backport(args):
+    cfg = __checkCfg()
+    known_files = cfg.filerules.keys()
+    for file in cfg.files:
+        if file not in known_files:
+            log.warn("No rules given for file %s, ignoring." % file)
+        else:
+            rule = cfg.filerules[file]
+            rule.backport()
 
 # {{{1 other stuff
 def kikoo(self):

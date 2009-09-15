@@ -18,10 +18,6 @@ def getConfig():
         conf = Config()
     return conf
 
-def getTime(file):
-    cfg = getConfig()
-    return os.path.getmtime(os.path.join(cfg.getRoot(), file))
-
 # {{{1 class Config
 class Config:
     """Purpose : store all config"""
