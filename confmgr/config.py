@@ -24,7 +24,7 @@ class Config:
 
     # {{{2 __init__
     def __init__(self):
-        self.config = ConfigParser.SafeConfigParser(self.getDefaults())
+        self.config = self.getDefaults()
         self.config.read([systemConfig, os.path.expanduser(userConfig)])
         self.cats = set([])
         self.files = set([])
@@ -38,10 +38,16 @@ class Config:
         return self.config.get(section, var)
 
     def getDefaults(self):
-        """Returns a dict of default values"""
+        """Returns a SafeConfigParser of default values"""
         # Put all default config here
-        data = dict()
-        data['root'] = os.path.expanduser("~/conf")
+        default = dict()
+        default['root'] = os.path.expanduser("~/conf")
+        data = ConfigParser.SafeConfigParser(default)
+        data.add_section('rules')
+        data.set('rules', 'preinstall', "")
+        data.set('rules', 'postinstall', "")
+        data.set('rules', 'def_build', "")
+        data.set('rules', 'def_install', "")
         return data
 
     # {{{2 findRoot, setRoot, getRoot
@@ -113,6 +119,21 @@ class Config:
                             elif section.lower() in ("files", "file"):
                                 self.__files.append((pre.strip(), post.strip()))
 
+    # {{{2 getRulesOptions
+    def getRulesOptions(self):
+        """Returns a dict of options read from config files"""
+        self.finalize()
+        options = self.config.items("rules")
+        opts = dict()
+        for (key, val) in options:
+            opts[key] = val
+        return opts
+
+    # {{{2 mergeCLIOptions
+    def mergeCLIOptions(self, options):
+        """Returns options once cli values have been merged into it"""
+        return options
+
     # {{{2 finalize
     def finalize(self):
         if self.finalized:
@@ -173,6 +194,8 @@ class Config:
 
     # {{{3 mergePathFile
     def mergePathFile(self, path_file):
+        r"""Reads __path files ; all \x sequences IN FILE NAMES will be
+        translated ; nothing will be done to those in options."""
         commands = []
 
         re_file_init = re.compile('^[^ \t]')
