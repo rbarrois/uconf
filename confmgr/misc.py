@@ -98,16 +98,18 @@ class FileRule:
         # First get default options from cfg, then add ones for the file, then merge CLI ones
         self.options = cfg.mergeCLIOptions(parseOptions(options, cfg.getRulesOptions()))
 
+    # {{{2 Build
     def _buildAction(self):
         if not self.options.has_key("def_build") or self.options['def_build'] in ('', 'std_build'):
             log.debug("Applying std_build to %s." % self.file)
             return actions.std_build
         else:
             act = self.options['def_build']
-            if act in dir(actions):
+            if 'std_' + act in dir(actions):
                 log.debug("Applying non-standard build method %s to %s." % (act, self.file))
                 return eval('actions.' + act)
             else:
+                log.build("Calling %s for building %s to %s" % (act, self.file, self.target))
                 return actions.call_cmd(act)
 
     def build(self):
@@ -127,16 +129,18 @@ class FileRule:
                 log.notice("Source file %s has changed, updating %s" % (self.file, self.target))
             act(src, dst)
 
+    # {{{2 Install
     def _installAction(self):
         if not self.options.has_key("def_install") or self.options['def_install'] in ('', 'std_install'):
             log.debug("Applying std_install to %s." % self.file)
             return actions.std_install
         else:
             act = self.options['def_install']
-            if act in dir(actions):
-                log.debug("Applying non-standard install method %s to %s." % (act, self.file))
+            if 'std_' + act in dir(actions):
+                log.build("Applying non-standard install method %s to %s." % (act, self.file))
                 return eval('actions.' + act)
             else:
+                log.build("Calling %s for installing %s to %s" % (act, self.file, self.target))
                 return actions.call_cmd(act)
 
     def install(self):
@@ -147,6 +151,7 @@ class FileRule:
         dst = os.path.join(os.path.expanduser(install_root), self.target)
         src_time = getTime(src)
         act = self._installAction()
+        self._preinstall(src, dst)
         if not os.path.exists(dst):
             log.notice("Target for %s doesn't exist yet." % src)
             act(src, dst)
@@ -155,7 +160,22 @@ class FileRule:
             if src_time < dst_time:
                 log.warn("Target %s has changed more recently than %s !!!" % (dst, src))
             act(src, dst)
+        self._postinstall(src, dst)
 
+    # {{{3 pre/post install actions
+    def _preinstall(self, src, dst):
+        if not self.options.has_key('preinstall') or self.options['preinstall'] == '':
+            return
+        cmd = self.options['preinstall']
+        actions.custom_preinstall(src, dst, cmd)
+
+    def _postinstall(self, src, dst):
+        if not self.options.has_key('postinstall') or self.options['preinstall'] == '':
+            return
+        cmd = self.options['postinstall']
+        actions.custom_postinstall(src, dst, cmd)
+
+    # {{{2 retrieve
     def retrieve(self):
         cfg = config.getConfig()
         root = cfg.getRoot()
@@ -170,6 +190,7 @@ class FileRule:
         else:
             actions.std_retrieve(installed, src)
 
+    # {{{2 backport
     def backport(self):
         cfg = config.getConfig()
         root = cfg.getRoot()

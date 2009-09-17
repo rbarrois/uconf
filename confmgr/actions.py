@@ -138,8 +138,15 @@ def std_link(ln_name, target):
     log.info("Linking %s to %s" % (ln_name, target))
     os.symlink(target, ln_name)
 
-def custom_postinstall(dst, cmd):
-    """Calls cmd (and explains it happened after dst installation"""
+def custom_preinstall(src, dst, cmd):
+    """Calls cmd (and explains it happened before dst installation)"""
+    log.info("Pre-install (%s) : running %s" % (dst, cmd))
+    ret = subprocess.call(cmd)
+    if ret != 0:
+        log.warn("Error : pre-install action for %s exited with code %i" % (dst, ret))
+
+def custom_postinstall(src, dst, cmd):
+    """Calls cmd (and explains it happened after dst installation)"""
     log.info("Post-install (%s) : running %s" % (dst, cmd))
     ret = subprocess.call(cmd)
     if ret != 0:
