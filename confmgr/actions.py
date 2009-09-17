@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Global imports
-import os, re, difflib, md5
+import os, re, difflib, hashlib, subprocess
 import distutils.file_util as f_util
 
 # Local imports
@@ -61,6 +61,11 @@ def parse_file(src):
         else:
             yield (False, '', line)
 
+def call_cmd(cmd):
+    """Returns a function f(x, y, z, ...) => subprocess.call(cmd + [x, y, z, ...])"""
+    fn = lambda *args : subprocess.call(cmd + [arg for arg in args])
+    return fn
+
 def std_build(src, dst):
     """Builds (normally) a file"""
     with open(dst, 'w') as g:
@@ -85,8 +90,8 @@ def std_backport(src, dst):
         dest = [line for line in f]
 
     # Check whether they differ
-    md5_orig = md5.new(''.join(orig)).digest()
-    md5_dest = md5.new(''.join(dest)).digest()
+    md5_orig = hashlib.md5.new(''.join(orig)).digest()
+    md5_dest = hashlib.md5.new(''.join(dest)).digest()
     if md5_orig == md5_dest:
         log.info("MD5 hash of %s[compiled] and %s are the same, skipping." % (src, dst))
         return
@@ -128,3 +133,14 @@ def std_copy(src, dst):
 def std_retrieve(installed, src):
     log.info("Retrieving %s from %s" % (src, installed))
     f_util.copy_file(installed, src, update = True)
+
+def std_link(ln_name, target):
+    log.info("Linking %s to %s" % (ln_name, target))
+    os.symlink(target, ln_name)
+
+def custom_postinstall(dst, cmd):
+    """Calls cmd (and explains it happened after dst installation"""
+    log.info("Post-install (%s) : running %s" % (dst, cmd))
+    ret = subprocess.call(cmd)
+    if ret != 0:
+        log.warn("Error : post-install action for %s exited with code %i" % (dst, ret))

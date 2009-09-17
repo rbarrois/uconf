@@ -12,6 +12,78 @@ def getTime(file):
     cfg = config.getConfig()
     return os.path.getmtime(os.path.join(cfg.getRoot(), file))
 
+def parseOptions(options, def_options):
+    r"""Parses a string of options :
+    a,b=c,d="e f,g",h='i\'j',k="l\"m",n=o\,p
+    into :
+    {'a':True, 'b': 'c', 'd': 'e f,g', 'h':'i\'j', 'k': 'l"m', 'n':'o,p'}
+    valid forms are :
+    blah (evals to blah = True)
+    blah=true (or True, TRUE, TRuE, ...)
+    blah=false (or False, FALSE, FalSe)
+    blah=/bin/coin
+    blah="/bin/coin -p"
+    blah="/bin/coin 'a b.jpg'"
+    blah="/bin/coin \"a b.jpg\""
+    blah='/bin/coin "a b.jpg"'
+    blah='/bin/coin \'a b.jpg\''
+    blah="/bin/coin \"a \\\"b c\\\" d.jpg\""
+    """
+    opts = def_options
+    cur = ""
+    key = ""
+    in_key = True
+    escaping = False
+    quoting = False
+    quoter = ""
+    for chr in options:
+        if escaping:
+            cur += chr
+            escaping = False
+        elif chr in ('\\'):
+            if in_key:
+                log.crit("Unexpected '\\' char in option key for %s." % self.file)
+                return
+            escaping = True
+        elif quoting:
+            if chr == quoter:
+                quoting = False
+            cur += chr
+        elif chr in ('\'', '"'):
+            if in_key:
+                log.crit("Forbidden %s char in option key for %s." % (chr, self.file))
+                return
+            quoting = True
+            cur += chr
+        elif chr == ',':
+            if in_key:
+                opts[key] = True
+            elif cur.lower() == 'true':
+                opts[key] = True
+            elif cur.lower() == 'false':
+                opts[key] = False
+            else:
+                opts[key] = cur
+            key = ""
+            chr = ""
+        else:
+            cur += chr
+    if in_key:
+        opts[key] = True
+    elif quoting:
+        log.crit("Error : unclosed quotes in option %s for %s." % (key, self.file))
+        sys.exit(2)
+    elif escaping:
+        log.crit("Error : missing char after \\ in option %s for %s" % (key, self.file))
+        sys.exit(2)
+    else:
+        if cur.lower() == 'true':
+            opts[key] = True
+        elif cur.lower() == 'false':
+            opts[key] = False
+        else:
+            opts[key] = cur
+    return opts
 
 # {{{1 class FileRule
 class FileRule:
@@ -22,7 +94,21 @@ class FileRule:
         log.debug("Added rule for '%s' : target is '%s', with options %s" % (file, target, options))
 
     def parseOptions(self, options):
-        self.options = options.split(',')
+        cfg = config.getConfig()
+        # First get default options from cfg, then add ones for the file, then merge CLI ones
+        self.options = cfg.mergeCLIOptions(parseOptions(options, cfg.getRulesOptions()))
+
+    def _buildAction(self):
+        if not self.options.has_key("def_build") or self.options['def_build'] in ('', 'std_build'):
+            log.debug("Applying std_build to %s." % self.file)
+            return actions.std_build
+        else:
+            act = self.options['def_build']
+            if act in dir(actions):
+                log.debug("Applying non-standard build method %s to %s." % (act, self.file))
+                return eval('actions.' + act)
+            else:
+                return actions.call_cmd(act)
 
     def build(self):
         cfg = config.getConfig()
@@ -31,14 +117,27 @@ class FileRule:
         src = os.path.join(root, 'src', self.file)
         dst = os.path.join(root, 'dst', self.file)
         src_time = getTime(src)
+        act = self._buildAction()
         if not os.path.exists(dst):
             log.notice("Target for %s doesn't exist yet." % self.file)
-            actions.std_build(src, dst)
+            act(src, dst)
         else:
             dst_time = getTime(dst)
             if dst_time < src_time:
                 log.notice("Source file %s has changed, updating %s" % (self.file, self.target))
-            actions.std_build(src, dst)
+            act(src, dst)
+
+    def _installAction(self):
+        if not self.options.has_key("def_install") or self.options['def_install'] in ('', 'std_install'):
+            log.debug("Applying std_install to %s." % self.file)
+            return actions.std_install
+        else:
+            act = self.options['def_install']
+            if act in dir(actions):
+                log.debug("Applying non-standard install method %s to %s." % (act, self.file))
+                return eval('actions.' + act)
+            else:
+                return actions.call_cmd(act)
 
     def install(self):
         cfg = config.getConfig()
@@ -47,14 +146,15 @@ class FileRule:
         src = os.path.join(root, 'dst', self.file)
         dst = os.path.join(os.path.expanduser(install_root), self.target)
         src_time = getTime(src)
+        act = self._installAction()
         if not os.path.exists(dst):
             log.notice("Target for %s doesn't exist yet." % src)
-            actions.std_install(src, dst)
+            act(src, dst)
         else:
             dst_time = getTime(dst)
             if src_time < dst_time:
                 log.warn("Target %s has changed more recently than %s !!!" % (dst, src))
-            actions.std_install(src, dst)
+            act(src, dst)
 
     def retrieve(self):
         cfg = config.getConfig()
@@ -96,12 +196,17 @@ def filenameSplit(txt, amount = 0):
     if amount is 0 (default), the string will be split into every non-empty filename encountered.
 
     '\\ ' is converted to a space, '\\\\' to '\\'
-    '\\x' with x neither ' ' nor '\\' is simply removed."""
+    '\\x' with x neither ' ' nor '\\' is simply removed.
+
+    If amount is non zero, all \\ in last part won't be interpreted."""
     parts = []
     prev_is_backslash = False
+    raw = False
     cur = ""
     for x in txt:
-        if x == '\\':
+        if raw:
+            cur += x
+        elif x == '\\':
             if prev_is_backslash:
                 cur += '\\'
                 prev_is_backslash = False
@@ -115,6 +220,8 @@ def filenameSplit(txt, amount = 0):
                     parts.append(cur)
                     cur = ""
             else:
+                # amount != 0 && len(parts) == amount - 1 => we are reading last item
+                raw = True
                 cur += ' '
             prev_is_backslash = False
         elif x == '\t':
@@ -124,6 +231,7 @@ def filenameSplit(txt, amount = 0):
                     parts.append(cur)
                     cur = ""
             else:
+                raw = True
                 cur += '\t'
         else:
             prev_is_backslash = False
