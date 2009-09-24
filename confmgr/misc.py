@@ -187,8 +187,11 @@ class FileRule:
             log.debug("Applying def_retrieve to %s." % self.file)
             cfg = config.getConfig()
             install_root = cfg.get("DEFAULT", "install_root")
-            src = os.path.join(os.path.expanduser(install_root), self.target)
-            return actions.def_retrieve(src)
+            installed = os.path.join(os.path.expanduser(install_root), self.target)
+            root = cfg.getRoot()
+            src = os.path.join(root, 'src', self.file)
+            dst = os.path.join(root, 'dst', self.file)
+            return actions.def_retrieve(installed, src, dst)
         else:
             act = self.options['def_retrieve']
             if 'std_' + act in dir(actions):
@@ -219,8 +222,9 @@ class FileRule:
             log.debug("Applying def_backport to %s." % self.file)
             cfg = config.getConfig()
             root = cfg.getRoot()
-            src = os.path.join(root, 'dst', self.file)
-            return actions.def_backport(src)
+            dst = os.path.join(root, 'dst', self.file)
+            src = os.path.join(root, 'src', self.file)
+            return actions.def_backport(dst, src)
         else:
             act = self.options['def_backport']
             if 'std_' + act in dir(actions):

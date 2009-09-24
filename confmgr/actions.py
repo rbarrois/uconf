@@ -20,6 +20,12 @@ def getHash(strings):
         hash.update(row)
     return hash.hexdigest()
 
+def linkTarget(file):
+    if not os.islink(file):
+        return None
+    else:
+        return os.path.join(os.path.dirname(file), os.readlink(file))
+
 # {{{1 File parsing
 # {{{2 get_output(src)
 def get_output(src):
@@ -116,19 +122,24 @@ def def_install(file):
         return std_install
 
 # {{{2 def_retrieve
-def def_retrieve(file):
+def def_retrieve(file, src, dst):
     """Determines the correct action for retrieving file :
 
     - retrieve (for normal files)
-    - copy_link (for symlinks)"""
+    - copy_link (for symlinks)
+    - none if file is already a link to src or dst"""
 
     if os.path.islink(file):
-        return std_copy_link
+        tgt = linkTarget(file)
+        if tgt in (dst, src):
+            return std_none
+        else:
+            return std_copy_link
     else:
         return std_retrieve
 
 # {{{2 def_backport
-def def_backport(file):
+def def_backport(file, src):
     """Determines the correct action for retrieving file :
 
     - backport (for normal files)
@@ -136,7 +147,11 @@ def def_backport(file):
     - copy_link (for symlinks)"""
 
     if os.path.islink(file):
-        return std_copy_link
+        tgt = linkTarget(file)
+        if tgt == src:
+            return std_none
+        else:
+            return std_copy_link
     else:
         if isTextFile(file):
             return std_backport
@@ -220,6 +235,10 @@ def std_retrieve(installed, src):
 def std_link(ln_name, target):
     log.info("Linking %s to %s" % (ln_name, target))
     os.symlink(target, ln_name)
+
+# {{{2 std_none
+def std_none(src, target):
+    log.info("Doing nothing for %s to %s" % (src, target))
 
 # {{{1 custom command callers
 # {{{2 call_cmd(cmd)
