@@ -100,16 +100,19 @@ class FileRule:
 
     # {{{2 Build
     def _buildAction(self):
-        if not self.options.has_key("def_build") or self.options['def_build'] in ('', 'std_build'):
-            log.debug("Applying std_build to %s." % self.file)
-            return actions.std_build
+        if not self.options.has_key("def_build") or self.options['def_build'] in ('', 'def_build'):
+            log.debug("Applying def_build to %s." % self.file)
+            cfg = config.getConfig()
+            root = cfg.getRoot()
+            src = os.path.join(root, 'src', self.file)
+            return actions.def_build(src)
         else:
             act = self.options['def_build']
             if 'std_' + act in dir(actions):
-                log.debug("Applying non-standard build method %s to %s." % (act, self.file))
+                log.debug("Applying non-default build method %s to %s." % (act, self.file))
                 return eval('actions.' + act)
             else:
-                log.build("Calling %s for building %s to %s" % (act, self.file, self.target))
+                log.debug("Calling %s for building %s to %s" % (act, self.file, self.target))
                 return actions.call_cmd(act)
 
     def build(self):
@@ -131,16 +134,19 @@ class FileRule:
 
     # {{{2 Install
     def _installAction(self):
-        if not self.options.has_key("def_install") or self.options['def_install'] in ('', 'std_install'):
-            log.debug("Applying std_install to %s." % self.file)
-            return actions.std_install
+        if not self.options.has_key("def_install") or self.options['def_install'] in ('', 'def_install'):
+            log.debug("Applying def_install to %s." % self.file)
+            cfg = config.getConfig()
+            root = cfg.getRoot()
+            src = os.path.join(root, 'dst', self.file)
+            return actions.def_install(src)
         else:
             act = self.options['def_install']
             if 'std_' + act in dir(actions):
-                log.build("Applying non-standard install method %s to %s." % (act, self.file))
+                log.debug("Applying non-default install method %s to %s." % (act, self.file))
                 return eval('actions.' + act)
             else:
-                log.build("Calling %s for installing %s to %s" % (act, self.file, self.target))
+                log.debug("Calling %s for installing %s to %s" % (act, self.file, self.target))
                 return actions.call_cmd(act)
 
     def install(self):
@@ -176,29 +182,63 @@ class FileRule:
         actions.custom_postinstall(src, dst, cmd)
 
     # {{{2 retrieve
+    def _retrieveAction(self):
+        if not self.options.has_key("def_retrieve") or self.options['def_retrieve'] in ('', 'def_retrieve'):
+            log.debug("Applying def_retrieve to %s." % self.file)
+            cfg = config.getConfig()
+            install_root = cfg.get("DEFAULT", "install_root")
+            src = os.path.join(os.path.expanduser(install_root), self.target)
+            return actions.def_retrieve(src)
+        else:
+            act = self.options['def_retrieve']
+            if 'std_' + act in dir(actions):
+                log.debug("Applying non-default retrieve method %s to %s." % (act, self.file))
+                return eval('actions.' + act)
+            else:
+                log.debug("Calling %s for retrieveing %s to %s" % (act, self.file, self.target))
+                return actions.call_cmd(act)
+
     def retrieve(self):
         cfg = config.getConfig()
         root = cfg.getRoot()
         install_root = cfg.get("DEFAULT", "install_root")
         installed = os.path.join(os.path.expanduser(install_root), self.target)
         src = os.path.join(root, 'dst', self.file)
+        act = self._retrieveAction()
         if not os.path.exists(src):
             log.warn("Trying to retrieve %s, not available in repo !!" % installed)
-            actions.std_retrieve(installed, src)
+            act(installed, src)
         elif not os.path.exists(installed):
             log.crit("Unable to retrieve non-existing file %s" % installed)
         else:
-            actions.std_retrieve(installed, src)
+            act(installed, src)
 
     # {{{2 backport
+    def _backportAction(self):
+        if not self.options.has_key("def_backport") or self.options['def_backport'] in ('', 'def_backport'):
+            log.debug("Applying def_backport to %s." % self.file)
+            cfg = config.getConfig()
+            root = cfg.getRoot()
+            src = os.path.join(root, 'dst', self.file)
+            return actions.def_backport(src)
+        else:
+            act = self.options['def_backport']
+            if 'std_' + act in dir(actions):
+                log.debug("Applying non-default backport method %s to %s." % (act, self.file))
+                return eval('actions.' + act)
+            else:
+                log.debug("Calling %s for backporting %s to %s" % (act, self.file, self.target))
+                return actions.call_cmd(act)
+
     def backport(self):
         cfg = config.getConfig()
         root = cfg.getRoot()
         src = os.path.join(root, 'src', self.file)
         dst = os.path.join(root, 'dst', self.file)
+        act = self._backportAction()
         if not os.path.exists(src):
             log.warn("Trying to backport to %s, which doesn't exist !" % src)
-            actions.std_copy(dst, src)
+            act(dst, src)
         elif not os.path.exists(dst):
             log.crit("Unable to backport non-existing file %s" % dst)
         else:
@@ -206,7 +246,7 @@ class FileRule:
             time_dst = getTime(dst)
             if time_src > time_dst:
                 log.warn("Warning : backporting %s onto %s which changed more recently" % (dst, src))
-            actions.std_backport(src, dst)
+            act(src, dst)
 
 
 

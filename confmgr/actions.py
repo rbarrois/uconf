@@ -8,12 +8,27 @@ import distutils.file_util as f_util
 # Local imports
 import log, config, misc
 
+def isTextFile(file):
+    """Determines, through 'file -b FILE', whether FILE is text"""
+    type = subprocess.Popen(['file', '-b', file], stdout=subprocess.PIPE).communicate()[0]
+    return ('text' in type.split())
+
+def getHash(strings):
+    """Returns the md5 hash of the strings row array"""
+    hash = hashlib.md5()
+    for row in strings:
+        hash.update(row)
+    return hash.hexdigest()
+
+# {{{1 File parsing
+# {{{2 get_output(src)
 def get_output(src):
     """Wrapper around parse_file, outputs only lines to be printed"""
     for (do_print, line, raw) in parse_file(src):
         if do_print:
             yield line
 
+# {{{2 parse_file(src)
 def parse_file(src):
     """Generator for the list of rows obtained from the file src"""
     cfg = config.getConfig()
@@ -61,18 +76,7 @@ def parse_file(src):
         else:
             yield (False, '', line)
 
-def call_cmd(cmd):
-    """Returns a function f(x, y, z, ...) => subprocess.call(cmd + [x, y, z, ...])"""
-    fn = lambda *args : subprocess.call(cmd + [arg for arg in args])
-    return fn
-
-def std_build(src, dst):
-    """Builds (normally) a file"""
-    with open(dst, 'w') as g:
-        with open(src, 'r') as f:
-            for line in get_output(f):
-                g.write(line)
-
+# {{{2 revert(line)
 def revert(line):
     """Returns the raw line which did generate line"""
     if len(line) > 1 and line[0] in ('!', '#', '"') and line[1] == "@":
@@ -80,6 +84,75 @@ def revert(line):
     else:
         return line
 
+# {{{1 Default commands
+# Default commands are called from FileRule ; they select which std_command should be returned
+
+# {{{2 def_build
+def def_build(file):
+    """Determines the correct action for building file :
+
+    - build (for text files)
+    - copy (for binaries)
+    - copy_link (for symlinks)"""
+
+    if os.path.islink(file):
+        return std_copy_link
+    else:
+        if isTextFile(file):
+            return std_build
+        else:
+            return std_copy
+
+# {{{2 def_install
+def def_install(file):
+    """Determines the correct action for installing file :
+
+    - copy (for normal files)
+    - copy_link (for symlinks)"""
+
+    if os.path.islink(file):
+        return std_copy_link
+    else:
+        return std_install
+
+# {{{2 def_retrieve
+def def_retrieve(file):
+    """Determines the correct action for retrieving file :
+
+    - retrieve (for normal files)
+    - copy_link (for symlinks)"""
+
+    if os.path.islink(file):
+        return std_copy_link
+    else:
+        return std_retrieve
+
+# {{{2 def_backport
+def def_backport(file):
+    """Determines the correct action for retrieving file :
+
+    - backport (for normal files)
+    - copy (for binary files)
+    - copy_link (for symlinks)"""
+
+    if os.path.islink(file):
+        return std_copy_link
+    else:
+        if isTextFile(file):
+            return std_backport
+        else:
+            return std_copy
+
+# {{{1 standard commands
+# {{{2 std_build
+def std_build(src, dst):
+    """Builds (normally) a file"""
+    with open(dst, 'w') as g:
+        with open(src, 'r') as f:
+            for line in get_output(f):
+                g.write(line)
+
+# {{{2 std_backport
 def std_backport(src, dst):
     """Finds differences between dst version and result of the compilation of src, and adapts src as needed"""
 
@@ -90,8 +163,8 @@ def std_backport(src, dst):
         dest = [line for line in f]
 
     # Check whether they differ
-    md5_orig = hashlib.md5.new(''.join(orig)).digest()
-    md5_dest = hashlib.md5.new(''.join(dest)).digest()
+    md5_orig = getHash(orig)
+    md5_dest = getHash(dest)
     if md5_orig == md5_dest:
         log.info("MD5 hash of %s[compiled] and %s are the same, skipping." % (src, dst))
         return
@@ -121,23 +194,41 @@ def std_backport(src, dst):
     with open(src, 'w') as f:
         [f.write(line) for line in newsrc]
 
-
+# {{{2 std_install
 def std_install(src, dst):
     log.info("Installing %s on %s" % (src, dst))
     f_util.copy_file(src, dst, preserve_mode = True, preserve_times = True, update = True)
 
+# {{{2 std_copy
 def std_copy(src, dst):
     log.info("Copying %s to %s" % (src, dst))
     f_util.copy_file(src, dst, preserve_mode = False, preserve_times = True, update = True)
 
+# {{{2 std_copy_link
+def std_copy_link(src, dst):
+    log.info("Replicating symlink %s to %s" % (src, dst))
+    tgt = os.readlink(src)
+    os.unlink(dst)
+    os.symlink(dst, tgt)
+
+# {{{2 std_retrieve
 def std_retrieve(installed, src):
     log.info("Retrieving %s from %s" % (src, installed))
     f_util.copy_file(installed, src, update = True)
 
+# {{{2 std_link
 def std_link(ln_name, target):
     log.info("Linking %s to %s" % (ln_name, target))
     os.symlink(target, ln_name)
 
+# {{{1 custom command callers
+# {{{2 call_cmd(cmd)
+def call_cmd(cmd):
+    """Returns a function f(x, y, z, ...) => subprocess.call(cmd + [x, y, z, ...])"""
+    fn = lambda *args : subprocess.call(cmd + [arg for arg in args])
+    return fn
+
+# {{{2 custom_preinstall
 def custom_preinstall(src, dst, cmd):
     """Calls cmd (and explains it happened before dst installation)"""
     log.info("Pre-install (%s) : running %s" % (dst, cmd))
@@ -145,6 +236,7 @@ def custom_preinstall(src, dst, cmd):
     if ret != 0:
         log.warn("Error : pre-install action for %s exited with code %i" % (dst, ret))
 
+# {{{2 custom_postinstall
 def custom_postinstall(src, dst, cmd):
     """Calls cmd (and explains it happened after dst installation)"""
     log.info("Post-install (%s) : running %s" % (dst, cmd))
