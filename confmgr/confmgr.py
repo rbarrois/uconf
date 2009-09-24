@@ -6,6 +6,8 @@ import sys, os
 # local imports
 import log, config, actions
 
+#version = @@VERSION@@
+version = 0.1
 
 # {{{1 __checkCfg
 def __checkCfg(findRoot = True):
@@ -17,6 +19,12 @@ def __checkCfg(findRoot = True):
     return cfg
 
 modules = ["init", "update", "build", "install", "diff", "check", "retrieve", "backport" ]
+
+def printVersion():
+    sys.stdout.write("""Confmgr %s
+Copyright (C) 2009 XelNet
+
+Written by Raphaël Barrois (Xelnor).\n""" % version)
 
 # {{{1 __getMethod
 def __getMethod(command):
