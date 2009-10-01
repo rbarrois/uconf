@@ -162,10 +162,12 @@ def def_backport(file, src):
 # {{{2 std_build
 def std_build(src, dst):
     """Builds (normally) a file"""
+    log.info("Building %s to %s" % (src, dst), with_success = True)
     with open(dst, 'w') as g:
         with open(src, 'r') as f:
             for line in get_output(f):
                 g.write(line)
+    log.success()
 
 # {{{2 std_backport
 def std_backport(src, dst):
@@ -211,30 +213,35 @@ def std_backport(src, dst):
 
 # {{{2 std_install
 def std_install(src, dst):
-    log.info("Installing %s on %s" % (src, dst))
+    log.info("Installing %s on %s" % (src, dst), with_success = True)
     f_util.copy_file(src, dst, preserve_mode = True, preserve_times = True, update = True)
+    log.success()
 
 # {{{2 std_copy
 def std_copy(src, dst):
-    log.info("Copying %s to %s" % (src, dst))
+    log.info("Copying %s to %s" % (src, dst), with_success = True)
     f_util.copy_file(src, dst, preserve_mode = False, preserve_times = True, update = True)
+    log.success()
 
 # {{{2 std_copy_link
 def std_copy_link(src, dst):
-    log.info("Replicating symlink %s to %s" % (src, dst))
+    log.info("Replicating symlink %s to %s" % (src, dst), with_success = True)
     tgt = os.readlink(src)
     os.unlink(dst)
     os.symlink(dst, tgt)
+    log.success()
 
 # {{{2 std_retrieve
 def std_retrieve(installed, src):
-    log.info("Retrieving %s from %s" % (src, installed))
+    log.info("Retrieving %s from %s" % (src, installed), with_success = True)
     f_util.copy_file(installed, src, update = True)
+    log.success()
 
 # {{{2 std_link
 def std_link(ln_name, target):
-    log.info("Linking %s to %s" % (ln_name, target))
+    log.info("Linking %s to %s" % (ln_name, target), with_success = True)
     os.symlink(target, ln_name)
+    log.success()
 
 # {{{2 std_none
 def std_none(src, target):
