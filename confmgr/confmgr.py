@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import sys, os
+import sys, os, optparse
 
 # local imports
 import log, config, actions
@@ -26,6 +26,19 @@ Copyright (C) 2009 XelNet
 
 Written by Raphaël Barrois (Xelnor).\n""" % version)
 
+def __init_parser(mth):
+    parser = optparse.OptionParser(mth.__doc__, add_help_option = False)
+    # Verbosity
+    parser.set_defaults(verbosity = 0)
+    parser.set_defaults(quietness = 0)
+    parser.add_option("-h", "--help", action="help", help=optparse.SUPPRESS_HELP)
+    parser.add_option("-v", "--verbose", action="count", dest="verbosity", help=optparse.SUPPRESS_HELP)
+    parser.add_option("-q", "--quiet", action="count", dest="quietness", help=optparse.SUPPRESS_HELP)
+    return parser
+
+def __set_verb(opts):
+    log.setLogLevel(log.getLogLevelFromVerbosity(opts.verbosity - opts.quietness))
+
 # {{{1 __getMethod
 def __getMethod(command):
     if command == "init":
@@ -48,32 +61,77 @@ def __getMethod(command):
         log.crit("Unknown command %s." % command)
         exit(1)
 
+# {{{1 getHelp
+def getHelp(cmd):
+    cmd = __getMethod(cmd).__name__
+    doc = eval(cmd + '.__doc__')
+    if doc == None:
+        return ""
+    else:
+        return doc
+
 # {{{1 call
 def call(command, args):
     """Wrapper to confmgr.command(args)"""
     __checkCfg(False)
     mth = __getMethod(command)
-    if "-h" in args or "--help" in args:
-        print mth.__doc__
-    else:
-        return mth(args)
+    parser = eval('__parse_' + command)
+    opts = None
+    arg = None
+    if parser != None:
+        (opts, args) = parser(args)
+    __set_verb(opts)
+    return mth(opts, args)
 
 # {{{1 commands
 
 # {{{2 cmd_init
-def cmd_init(args):
+def __parse_init(args):
+    """Parses args and returns (opts, args)"""
+    parser = __init_parser(cmd_init)
+    return parser.parse_args(args)
+
+def cmd_init(opts, args):
+    """Initialize a confmgr repo here"""
     cfg = __checkCfg(False)
     cfg.setRoot(os.getcwd())
 
 # {{{2 cmd_update
-def cmd_update(args):
+def __parse_update(args):
+    """Parses args and returns (opts, args)"""
+    parser = __init_parser(cmd_update)
+    return parser.parse_args(args)
+
+def cmd_update(opts, args):
+    """Update repo (through an update of the VCS)"""
     cfg = __checkCfg()
 
 # {{{2 cmd_build
-def cmd_build(args):
+def __parse_build(args):
+    """Parses args and returns (opts, args)"""
+    parser = __init_parser(cmd_build)
+    return parser.parse_args(args)
+
+def cmd_build(opts, files):
+    """Build all files needed for this host
+
+    No options.
+    Optionnally, a list of files to build can be given when calling."""
     cfg = __checkCfg()
     known_files = cfg.filerules.keys()
-    for file in cfg.files:
+
+    # Load files given as arguments
+    _files = []
+    if len(files) > 0:
+        for file in files:
+            if file not in cfg.files:
+                log.warn("No configuration for file %s, ignoring." % file)
+            else:
+                _files.append(file)
+    else:
+        _files = cfg.files
+
+    for file in _files:
         if file not in known_files:
             log.warn("No rules given for file %s, ignoring." % file)
         else:
@@ -81,7 +139,13 @@ def cmd_build(args):
             rule.build()
 
 # {{{2 cmd_install
-def cmd_install(args):
+def __parse_install(args):
+    """Parses args and returns (opts, args)"""
+    parser = __init_parser(cmd_install)
+    return parser.parse_args(args)
+
+def cmd_install(opts, args):
+    """Install all built files to their targets"""
     cfg = __checkCfg()
     known_files = cfg.filerules.keys()
     for file in cfg.files:
@@ -92,11 +156,23 @@ def cmd_install(args):
             rule.install()
 
 # {{{2 cmd_check
-def cmd_check(args):
+def __parse_check(args):
+    """Parses args and returns (opts, args)"""
+    parser = __init_parser(cmd_check)
+    return parser.parse_args(args)
+
+def cmd_check(opts, args):
+    """Check whatever you wantXXX"""
     cfg = __checkCfg()
 
 # {{{2 cmd_retrieve
-def cmd_retrieve(args):
+def __parse_retrieve(args):
+    """Parses args and returns (opts, args)"""
+    parser = __init_parser(cmd_retrieve)
+    return parser.parse_args(args)
+
+def cmd_retrieve(opts, args):
+    """Retrive installed files"""
     cfg = __checkCfg()
     known_files = cfg.filerules.keys()
     for file in cfg.files:
@@ -106,7 +182,14 @@ def cmd_retrieve(args):
             rule = cfg.filerules[file]
             rule.retrieve()
 
-def cmd_backport(args):
+# {{{2 cmd_backport
+def __parse_backport(args):
+    """Parses args and returns (opts, args)"""
+    parser = __init_parser(cmd_backport)
+    return parser.parse_args(args)
+
+def cmd_backport(opts, args):
+    """Backport modifications of retrieved files to their source versions"""
     cfg = __checkCfg()
     known_files = cfg.filerules.keys()
     for file in cfg.files:
