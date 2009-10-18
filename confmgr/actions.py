@@ -261,7 +261,7 @@ def std_none(src, target):
 def std_diff(src, dst):
     log.info("vimdiff %s %s" % (src, dst))
     diff = subprocess.Popen(["diff", "-Nur", src, dst], stdout=subprocess.PIPE).communicate()[0]
-    [log.info(row) for row in diff.splitlines()]
+    [log.display(row) for row in diff.splitlines()]
 
 # {{{2 std_check
 def std_check(src, dst, installed):
@@ -275,11 +275,11 @@ def std_check(src, dst, installed):
     md5_orig = getHash(orig)
     md5_dest = getHash(dest)
     if md5_orig != md5_dest:
-        log.info("Found diff between %s and compiled version %s." % (src, dst))
+        log.display("Found diff between %s and compiled version %s." % (src, dst))
 
     retcode = subprocess.call(["diff", dst, installed], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     if retcode != 0:
-        log.info("Found diff between %s and installed version %s." % (dst, installed))
+        log.display("Found diff between %s and installed version %s." % (dst, installed))
 
 # {{{1 custom command callers
 # {{{2 call_cmd(cmd)

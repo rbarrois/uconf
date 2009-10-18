@@ -45,6 +45,9 @@ def getLogLevelFromVerbosity(verb):
 def getLogLevel():
     return LogLevelHolder.logLevel
 
+def display(msg, module = None):
+    show(msg, getLogLevel(), module, False)
+
 def crit(msg, module = None, with_success = False):
     show(msg, CRIT, module, with_success)
 
@@ -102,11 +105,11 @@ def __screensize():
     return -1, -1
 
 def success():
-    if LogLevelHolder.success_level >= LogLevelHolder.logLevel:
+    if LogLevelHolder.success_level >= getLogLevel():
         __print_status(success = True)
 
 def fail():
-    if LogLevelHolder.success_level >= LogLevelHolder.logLevel:
+    if LogLevelHolder.success_level >= getLogLevel():
         __print_status(success = False)
 
 def __print_status(success = True):
@@ -120,7 +123,7 @@ def __print_status(success = True):
     sys.stderr.write(padding + msg + "\n")
 
 def show(msg, level, module = None, with_success = False):
-    if level >= LogLevelHolder.logLevel :
+    if level >= getLogLevel() :
         if module != None:
             color = __module_colors[level]
             msg = __colorize("magenta", "[") + __colorize(color, module) + __colorize("magenta", "]") + " " + msg
