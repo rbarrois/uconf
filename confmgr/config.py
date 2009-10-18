@@ -14,7 +14,7 @@ userConfig = "~/.confmgr"
 def getConfig():
     conf = cfg
     if conf == None:
-        log.debug("Initializing config.")
+        log.debug("Initializing config.", module="Config")
         conf = Config()
     return conf
 
@@ -68,9 +68,9 @@ class Config:
                 else:
                     path = os.path.dirname(path)
             else:
-                log.crit("Incorrect path : %s is not a dir" % path)
+                log.crit("Incorrect path : %s is not a dir" % path, "Config/FindRoot")
                 exit(1)
-        log.crit("Unable to find repo root")
+        log.crit("Unable to find repo root", "Config")
         exit(1)
 
     def setRoot(self, root):
@@ -78,7 +78,7 @@ class Config:
         if os.path.exists(root):
             self.config.set("DEFAULT", "root", root)
         else:
-            log.crit("Can't set repo root to non existent path %s" % root)
+            log.crit("Can't set repo root to non existent path %s" % root, "Config")
             exit(1)
         if os.path.exists(root + "/config") and os.access(root + "/config", os.R_OK):
             self.readRepoConfig(root + "/config")
@@ -94,7 +94,7 @@ class Config:
         if configfile == None:
             configfile = self.getRoot() + "/config"
 
-        log.debug("Reading repo config from %s" % configfile)
+        log.debug("Reading repo config from %s" % configfile, module="Config")
         section = "DEFAULT"
 
         # Matches a section header
@@ -168,7 +168,7 @@ class Config:
             rules.append(CatExpandRule(pre, post))
         for rule in rules:
             self.cats = self.cats | rule.apply(self.cats)
-        log.notice("Categories are " + ", ".join(self.cats))
+        log.notice("Categories are " + ", ".join(self.cats), "Config/loadCats")
 
     # {{{2 __loadFiles
     def __loadFiles(self):
@@ -185,7 +185,7 @@ class Config:
     def __loadRules(self):
         """Load the list of rules, file per file"""
         if len(self.files) == 0:
-            log.debug("No files to handle.")
+            log.debug("No files to handle.", module="Config/loadRules")
             return
 
         root = self.getRoot()
@@ -194,7 +194,7 @@ class Config:
         for row in fnd.split():
             path_files.append(row)
         path_files.sort()
-        log.debug("Path_files are : " + ", ".join(path_files))
+        log.debug("Path_files are : " + ", ".join(path_files), module="Config/loadRules")
 
         for path_file in path_files:
             self.mergePathFile(path_file)
@@ -222,7 +222,7 @@ class Config:
                                 commands.append(cur)
                             cur = row
                         else:
-                            log.warn("Erroneous row %s in %s." % (row, path_file))
+                            log.warn("Erroneous row %s in %s." % (row, path_file), "Config/PathFiles")
                     if re_keep_going_row.match(row) != None:
                         # Strip the '\' at the end of cur
                         cur = cur[:-1]
@@ -235,7 +235,7 @@ class Config:
         for command in commands:
             parts = misc.filenameSplit(command, 3)
             if len(parts) < 2:
-                log.warn("Too short line : %s" % command)
+                log.warn("Too short line : %s" % command, "Config/PathFiles")
                 continue
             file = parts[0]
             target = parts[1]
@@ -298,6 +298,6 @@ class FileExpandRule:
 
 # Initiate cfg
 if 'cfg' not in dir():
-    log.debug("cfg not created yet, initializing.")
+    log.debug("cfg not created yet, initializing.", "Config")
     cfg = Config()
 

@@ -52,15 +52,15 @@ def parse_file(src):
         else:
             row = line
         if re_comment.match(row) != None:
-            log.debug("Encountered comment : %s" % row)
+            log.debug("Encountered comment : %s" % row, "FileParser")
             yield (False, '', line)
         elif write and re_escaped.match(row) != None:
-            log.debug("Escaping row : %s" % row)
+            log.debug("Escaping row : %s" % row, "FileParser")
             yield (True, row[:2] + row[3:] + "\n", line)
         elif re_command.match(row) != None:
             parts = row[2:].split(' ', 2)
             command = parts[0]
-            log.debug("Encountered command %s" % command)
+            log.debug("Encountered command %s" % command, "FileParser")
             if command == "end" and in_block:
                 write = True
                 in_block = False
@@ -69,13 +69,13 @@ def parse_file(src):
                 rule = misc.parse_cplx_pre(parts[1])
                 if rule.apply(cats):
                     write = True
-                    log.debug("Rule %s has matched." % parts[1])
+                    log.debug("Rule %s has matched." % parts[1], "FileParser")
                 else:
                     write = False
-                    log.debug("Rule %s didn't match." % parts[1])
+                    log.debug("Rule %s didn't match." % parts[1], "FileParser")
             elif in_block and command == "else":
                 write = not write
-                log.debug("Switching writing to %s" % write)
+                log.debug("Switching writing to %s" % write, "FileParser")
             yield(False, '', line)
         elif write:
             yield (True, line, line)
@@ -291,15 +291,21 @@ def call_cmd(cmd):
 # {{{2 custom_preinstall
 def custom_preinstall(src, dst, cmd):
     """Calls cmd (and explains it happened before dst installation)"""
-    log.info("Pre-install (%s) : running %s" % (dst, cmd))
+    log.info("Pre-install (%s) : running %s" % (dst, cmd), with_success = True)
     ret = subprocess.call(cmd)
     if ret != 0:
-        log.warn("Error : pre-install action for %s exited with code %i" % (dst, ret))
+        log.warn("Error : pre-install action for %s exited with code %i" % (dst, ret), "Actions/custom_preinstall")
+        log.fail()
+    else:
+        log.success()
 
 # {{{2 custom_postinstall
 def custom_postinstall(src, dst, cmd):
     """Calls cmd (and explains it happened after dst installation)"""
-    log.info("Post-install (%s) : running %s" % (dst, cmd))
+    log.info("Post-install (%s) : running %s" % (dst, cmd), with_success = True)
     ret = subprocess.call(cmd)
     if ret != 0:
-        log.warn("Error : post-install action for %s exited with code %i" % (dst, ret))
+        log.warn("Error : post-install action for %s exited with code %i" % (dst, ret), "Actions/custom_postinstall")
+        log.fail()
+    else:
+        log.success()
