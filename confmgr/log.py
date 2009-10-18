@@ -11,6 +11,19 @@ INFO = 10
 WARN = 15
 CRIT = 20
 
+# Read args to set initial debug level
+def setInitialLogLevel():
+    verb = 0
+    # Skip args 0 (binary name) and 1 (command)
+    for arg in sys.argv[2:]:
+        if arg == "-v":
+            verb += 1
+        elif arg == "-q":
+            verb -= 1
+        else:
+            break
+    setLogLevel(getLogLevelFromVerbosity(verb))
+
 # Class holding current log level
 class LogLevelHolder:
     logLevel = INFO
@@ -101,3 +114,6 @@ def show(msg,level, with_success = False):
             LogLevelHolder.last_width = len(msg.decode('utf-8'))
         else:
             sys.stderr.write("\n")
+
+
+setInitialLogLevel()
