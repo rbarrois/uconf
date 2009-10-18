@@ -55,7 +55,6 @@ def __getMethod(command):
         return eval(cmd)
     else:
         log.crit("Unknown command %s." % command, "Core")
-        log.notice("Dir is : %s" % repr(__methods), "Core")
         exit(1)
 
 # {{{1 getHelp

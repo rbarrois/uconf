@@ -14,7 +14,7 @@ userConfig = "~/.confmgr"
 def getConfig():
     conf = cfg
     if conf == None:
-        log.debug("Initializing config.", module="Config")
+        log.fulldebug("Initializing config.", module="Config")
         conf = Config()
     return conf
 
@@ -298,6 +298,6 @@ class FileExpandRule:
 
 # Initiate cfg
 if 'cfg' not in dir():
-    log.debug("cfg not created yet, initializing.", "Config")
+    log.fulldebug("cfg not created yet, initializing.", "Config")
     cfg = Config()
 
