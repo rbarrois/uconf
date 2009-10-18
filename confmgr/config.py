@@ -84,6 +84,9 @@ class Config:
     def getRoot(self):
         return os.path.expanduser(self.config.get("DEFAULT", "root"))
 
+    def getInstallRoot(self):
+        return os.path.expanduser(self.config.get("DEFAULT", "install_root"))
+
     # {{{2 readRepoConfig
     def readRepoConfig(self, configfile = None):
         if configfile == None:
