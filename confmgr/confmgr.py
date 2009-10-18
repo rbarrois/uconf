@@ -39,26 +39,23 @@ def __init_parser(mth):
 def __set_verb(opts):
     log.setLogLevel(log.getLogLevelFromVerbosity(opts.verbosity - opts.quietness))
 
+# {{{1 __getMethods
+def __getMethods(dir):
+    """Lists methods implemented in current code"""
+    res = []
+    for item in dir:
+        if item[:4] == "cmd_":
+            res.append(item)
+    return res
+
 # {{{1 __getMethod
 def __getMethod(command):
-    if command == "init":
-        return cmd_init
-    elif command == "update":
-        return cmd_update
-    elif command == "build":
-        return cmd_build
-    elif command == "install":
-        return cmd_install
-    elif command == "diff":
-        return cmd_diff
-    elif command == "check":
-        return cmd_check
-    elif command == "retrieve":
-        return cmd_retrieve
-    elif command == "backport":
-        return cmd_backport
+    cmd = "cmd_" + command
+    if cmd in __methods:
+        return eval(cmd)
     else:
-        log.crit("Unknown command %s." % command)
+        log.crit("Unknown command %s." % command, "Core")
+        log.notice("Dir is : %s" % repr(__methods), "Core")
         exit(1)
 
 # {{{1 getHelp
@@ -225,11 +222,4 @@ def cmd_diff(opts, args):
             rule = cfg.filerules[file]
             rule.diff()
 
-
-# {{{1 other stuff
-def kikoo(self):
-    log.info("COIN!!!")
-    log.notice("Notice")
-    log.debug("Debug...")
-    log.warn("Warning")
-    log.crit("42")
+__methods = __getMethods(dir())
