@@ -44,20 +44,20 @@ def getLogLevelFromVerbosity(verb):
 def getLogLevel():
     return LogLevelHolder.logLevel
 
-def crit(msg, with_success = False):
-    show(msg, CRIT, with_success)
+def crit(msg, module = None, with_success = False):
+    show(msg, CRIT, module, with_success)
 
-def warn(msg, with_success = False):
-    show(msg, WARN, with_success)
+def warn(msg, module = None, with_success = False):
+    show(msg, WARN, module, with_success)
 
-def info(msg, with_success = False):
-    show(msg, INFO, with_success)
+def info(msg, module = None, with_success = False):
+    show(msg, INFO, module, with_success)
 
-def notice(msg, with_success = False):
-    show(msg, NOTICE, with_success)
+def notice(msg, module = None, with_success = False):
+    show(msg, NOTICE, module, with_success)
 
-def debug(msg, with_success = False):
-    show(msg, DEBUG, with_success)
+def debug(msg, module = None, with_success = False):
+    show(msg, DEBUG, module, with_success)
 
 # {{{1 Success / fail
 __esc_seq = "\x1b["
@@ -71,8 +71,15 @@ __colors["magenta"] = __esc_seq + "35m"
 __colors["cyan"]    = __esc_seq + "36m"
 __colors["white"]   = __esc_seq + "37m"
 
+__module_colors = dict()
+__module_colors[DEBUG] = "blue"
+__module_colors[NOTICE] = "cyan"
+__module_colors[INFO] = ""
+__module_colors[WARN] = "yellow"
+__module_colors[CRIT] = "red"
+
 def __colorize(code, txt):
-    if LogLevelHolder.have_color:
+    if LogLevelHolder.have_color and code in __colors.keys():
         return __colors[code] + txt + __colors["reset"]
     else:
         return txt
@@ -106,8 +113,11 @@ def __print_status(success = True):
     padding = " " * (cols - last_width - 6)
     sys.stderr.write(padding + msg + "\n")
 
-def show(msg,level, with_success = False):
+def show(msg, level, module = None, with_success = False):
     if level >= LogLevelHolder.logLevel :
+        if module != None:
+            color = __module_colors[level]
+            msg = __colorize("magenta", "[") + __colorize(color, module) + __colorize("magenta", "]") + " " + msg
         sys.stderr.write(msg)
         if with_success:
             LogLevelHolder.success_level = level
