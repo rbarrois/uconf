@@ -9,7 +9,7 @@ import log, misc
 
 
 systemConfig = "/etc/confmgr.conf"
-userConfig = "~/.confmgr.conf"
+userConfig = "~/.confmgr"
 
 def getConfig():
     conf = cfg
@@ -24,8 +24,10 @@ class Config:
 
     # {{{2 __init__
     def __init__(self):
+        # get defaults
         self.config = self.getDefaults()
         self.config.read([systemConfig, os.path.expanduser(userConfig)])
+        # initialize data
         self.cats = set([])
         self.files = set([])
         self.__cats = []
