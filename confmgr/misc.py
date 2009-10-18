@@ -152,9 +152,9 @@ class FileRule:
     def install(self):
         cfg = config.getConfig()
         root = cfg.getRoot()
-        install_root = cfg.get("DEFAULT", "install_root")
+        install_root = cfg.getInstallRoot()
         src = os.path.join(root, 'dst', self.file)
-        dst = os.path.join(os.path.expanduser(install_root), self.target)
+        dst = os.path.join(install_root, self.target)
         src_time = getTime(src)
         act = self._installAction()
         self._preinstall(src, dst)
@@ -186,8 +186,8 @@ class FileRule:
         if not self.options.has_key("def_retrieve") or self.options['def_retrieve'] in ('', 'def_retrieve'):
             log.debug("Applying def_retrieve to %s." % self.file)
             cfg = config.getConfig()
-            install_root = cfg.get("DEFAULT", "install_root")
-            installed = os.path.join(os.path.expanduser(install_root), self.target)
+            install_root = cfg.getInstallRoot()
+            installed = os.path.join(install_root, self.target)
             root = cfg.getRoot()
             src = os.path.join(root, 'src', self.file)
             dst = os.path.join(root, 'dst', self.file)
@@ -204,8 +204,8 @@ class FileRule:
     def retrieve(self):
         cfg = config.getConfig()
         root = cfg.getRoot()
-        install_root = cfg.get("DEFAULT", "install_root")
-        installed = os.path.join(os.path.expanduser(install_root), self.target)
+        install_root = cfg.getInstallRoot()
+        installed = os.path.join(install_root, self.target)
         src = os.path.join(root, 'dst', self.file)
         act = self._retrieveAction()
         if not os.path.exists(src):
@@ -250,7 +250,65 @@ class FileRule:
             time_dst = getTime(dst)
             if time_src > time_dst:
                 log.warn("Warning : backporting %s onto %s which changed more recently" % (dst, src))
-            act(src, dst)
+            act(dst, src)
+
+    # {{{2 diff
+    def _diffAction(self):
+        if not self.options.has_key("def_diff") or self.options['def_diff'] in ('', 'def_diff'):
+            log.debug("Applying def_diff to %s." % self.file)
+            return actions.def_diff()
+        else:
+            act = self.options['def_diff']
+            if 'std_' + act in dir(actions):
+                log.debug("Applying non-default diff method %s to %s." % (act, self.file))
+                return eval('actions.' + act)
+            else:
+                log.debug("Calling %s for diffing %s with %s" % (act, self.file, self.target))
+                return actions.call_cmd(act)
+
+    def diff(self):
+        cfg = config.getConfig()
+        root = cfg.getRoot()
+        install_root = cfg.getInstallRoot()
+        src = os.path.join(root, 'dst', self.file)
+        dst = os.path.join(install_root, self.target)
+        if not os.path.exists(src):
+            log.warn("Trying to find diffs for %s, which doesn't exist !" % self.file)
+        elif not os.path.exists(dst):
+            log.warn("Installed file %s doesn't exist !" % dst)
+        act = self._diffAction()
+        act(src, dst)
+
+    # {{{2 check
+    def _checkAction(self):
+        """Returns the action for checking : generally def_check"""
+        if not self.options.has_key("def_check") or self.options['def_check'] in ('', 'def_check'):
+            log.debug("Applying def_check to %s." % self.file)
+            return actions.def_check()
+        else:
+            act = self.options['def_check']
+            if 'std_' + act in dir(actions):
+                log.debug("Applying non-default check method %s to %s." % (act, self.file))
+                return eval('actions.' + act)
+            else:
+                log.debug("Calling %s for checking %s with %s" % (act, self.file, self.target))
+                return actions.call_cmd(act)
+
+    def check(self):
+        cfg = config.getConfig()
+        root = cfg.getRoot()
+        install_root = cfg.getInstallRoot()
+        src = os.path.join(root, 'src', self.file)
+        dst = os.path.join(root, 'dst', self.file)
+        installed = os.path.join(install_root, self.target)
+        if not os.path.exists(src):
+            log.warn("Source file %s is missing !!" % src)
+        if not os.path.exists(dst):
+            log.warn("Compiled file %s is missing !!" % dst)
+        if not os.path.exists(installed):
+            log.warn("Installed file %s is missing !!" % installed)
+        act = self._checkAction()
+        act(src, dst, installed)
 
 
 

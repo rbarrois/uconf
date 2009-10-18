@@ -158,6 +158,16 @@ def def_backport(file, src):
         else:
             return std_copy
 
+# {{{2 def_diff
+def def_diff():
+    """Determines the correct action for diffing two files : always 'diff' :p"""
+    return std_diff
+
+# {{{2 def_check
+def def_check():
+    """Determines the correct action for checking a file : always std_check :p"""
+    return std_check
+
 # {{{1 standard commands
 # {{{2 std_build
 def std_build(src, dst):
@@ -246,6 +256,30 @@ def std_link(ln_name, target):
 # {{{2 std_none
 def std_none(src, target):
     log.info("Doing nothing for %s to %s" % (src, target))
+
+# {{{2 std_diff
+def std_diff(src, dst):
+    log.info("vimdiff %s %s" % (src, dst))
+    diff = subprocess.Popen(["diff", "-Nur", src, dst], stdout=subprocess.PIPE).communicate()[0]
+    [log.info(row) for row in diff.splitlines()]
+
+# {{{2 std_check
+def std_check(src, dst, installed):
+    # Load compiled versions
+    with open(src, 'r') as f:
+        orig = [line for line in get_output(f)]
+    with open(dst, 'r') as f:
+        dest = [line for line in f]
+
+    # Check whether they differ
+    md5_orig = getHash(orig)
+    md5_dest = getHash(dest)
+    if md5_orig != md5_dest:
+        log.info("Found diff between %s and compiled version %s." % (src, dst))
+
+    retcode = subprocess.call(["diff", dst, installed], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    if retcode != 0:
+        log.info("Found diff between %s and installed version %s." % (dst, installed))
 
 # {{{1 custom command callers
 # {{{2 call_cmd(cmd)

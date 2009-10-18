@@ -50,7 +50,7 @@ def __getMethod(command):
     elif command == "install":
         return cmd_install
     elif command == "diff":
-        return cmd_install
+        return cmd_diff
     elif command == "check":
         return cmd_check
     elif command == "retrieve":
@@ -162,8 +162,17 @@ def __parse_check(args):
     return parser.parse_args(args)
 
 def cmd_check(opts, args):
-    """Check whatever you wantXXX"""
+    """Outputs list of files where there are diffs :
+    - Between source and compiled
+    - Between compiled and installed"""
     cfg = __checkCfg()
+    known_files = cfg.filerules.keys()
+    for file in cfg.files:
+        if file not in known_files:
+            log.warn("No rules given for file %s, ignoring." % file)
+        else:
+            rule = cfg.filerules[file]
+            rule.check()
 
 # {{{2 cmd_retrieve
 def __parse_retrieve(args):
@@ -198,6 +207,24 @@ def cmd_backport(opts, args):
         else:
             rule = cfg.filerules[file]
             rule.backport()
+
+# {{{2 cmd_diff
+def __parse_diff(args):
+    """Parses args and returns (opts, args)"""
+    parser = __init_parser(cmd_diff)
+    return parser.parse_args(args)
+
+def cmd_diff(opts, args):
+    """Print diff between compiled files and installed versions."""
+    cfg = __checkCfg()
+    known_files = cfg.filerules.keys()
+    for file in cfg.files:
+        if file not in known_files:
+            log.warn("No rules given for file %s, ignoring." % file)
+        else:
+            rule = cfg.filerules[file]
+            rule.diff()
+
 
 # {{{1 other stuff
 def kikoo(self):
