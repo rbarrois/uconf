@@ -93,15 +93,17 @@ class Config:
     def readRepoConfig(self, configfile = None):
         if configfile == None:
             configfile = self.getRoot() + "/config"
+
+        log.debug("Reading repo config from %s" % configfile)
         section = "DEFAULT"
 
         # Matches a section header
-        re_section = re.compile("^\[([a-zA-Z0-9]+)\][ \t]*$")
+        re_section = re.compile("^\[(\w+)\][ \t]*$")
 
-        # Matches a simple row : a b c d = e f g
-        re_spl_row = re.compile("^[ \t]*(\w+)[ \t]*[=:][ \t]*(\w+)[ \t]*$")
+        # Matches a config row : a = X
+        re_cfg_row = re.compile("^[ \t]*(\w+)[ \t]*[=:][ \t]*([^ ].*)$")
 
-        # Matches a complex row : (a && b || ! b) and (a or not b) = c d
+        # Matches a cat / file row : (a && b || ! b) and (a or not b) = c d
         re_cplx_row = re.compile("^[ \t]*([\w!()&| \t]+)[ \t]*[=:][ \t]*([\S \t]+)$")
         with open(configfile) as f:
             for line in f:
@@ -111,7 +113,7 @@ class Config:
                     section = m.group(1)
                 else:
                     if section == "DEFAULT":
-                        m = re_spl_row.match(row)
+                        m = re_cfg_row.match(row)
                         if m != None:
                             (key, val) = m.groups()
                             self.config.set("DEFAULT", key, val)
