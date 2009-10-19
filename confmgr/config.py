@@ -168,7 +168,7 @@ class Config:
             rules.append(CatExpandRule(pre, post))
         for rule in rules:
             self.cats = self.cats | rule.apply(self.cats)
-        log.notice("Categories are " + ", ".join(self.cats), "Config/loadCats")
+        log.notice("Active categories are " + ", ".join(self.cats), "Config/loadCats")
 
     # {{{2 __loadFiles
     def __loadFiles(self):

@@ -119,7 +119,7 @@ def __print_status(success = True):
     if success:
         msg = __colorize("blue", "[ ") + __colorize("green", "ok") + __colorize("blue", " ]")
     else:
-        msg = colorize("blue", "[ ") + colorize("red", "!!") + colorize("blue", "]")
+        msg = __colorize("blue", "[ ") + __colorize("red", "!!") + __colorize("blue", " ]")
     padding = " " * (cols - last_width - 6)
     sys.stderr.write(padding + msg + "\n")
 
