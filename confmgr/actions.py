@@ -224,8 +224,11 @@ def std_backport(src, dst):
 # {{{2 std_install
 def std_install(src, dst):
     log.info("Installing %s on %s" % (src, dst), with_success = True)
-    f_util.copy_file(src, dst, preserve_mode = True, preserve_times = True, update = True)
-    log.success()
+    (dstname, copied) = f_util.copy_file(src, dst, preserve_mode = True, preserve_times = True, update = True)
+    if copied:
+        log.success()
+    else:
+        log.fail()
 
 # {{{2 std_copy
 def std_copy(src, dst):

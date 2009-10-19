@@ -164,7 +164,7 @@ class FileRule:
         else:
             dst_time = getTime(dst)
             if src_time < dst_time:
-                log.warn("Target %s has changed more recently than %s !!!" % (dst, src), "Rules/Install")
+                log.warn("Target %s has changed more recently than %s." % (dst, src), "Rules/Install")
             act(src, dst)
         self._postinstall(src, dst)
 
