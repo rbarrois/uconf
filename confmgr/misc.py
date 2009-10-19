@@ -101,7 +101,7 @@ class FileRule:
     # {{{2 Build
     def _buildAction(self):
         if not self.options.has_key("def_build") or self.options['def_build'] in ('', 'def_build'):
-            log.debug("Applying def_build to %s." % self.file, "Rules")
+            log.debug("Applying def_build to %s." % self.file, "Rules/Build")
             cfg = config.getConfig()
             root = cfg.getRoot()
             src = os.path.join(root, 'src', self.file)
@@ -109,10 +109,10 @@ class FileRule:
         else:
             act = self.options['def_build']
             if 'std_' + act in dir(actions):
-                log.debug("Applying non-default build method %s to %s." % (act, self.file), "Rules")
+                log.debug("Applying non-default build method %s to %s." % (act, self.file), "Rules/Build")
                 return eval('actions.' + act)
             else:
-                log.debug("Calling %s for building %s to %s" % (act, self.file, self.target), "Rules")
+                log.debug("Calling %s for building %s to %s" % (act, self.file, self.target), "Rules/Build")
                 return actions.call_cmd(act)
 
     def build(self):
@@ -124,18 +124,18 @@ class FileRule:
         src_time = getTime(src)
         act = self._buildAction()
         if not os.path.exists(dst):
-            log.notice("Target for %s doesn't exist yet." % self.file, "Rules")
+            log.notice("Target for %s doesn't exist yet." % self.file, "Rules/Build")
             act(src, dst)
         else:
             dst_time = getTime(dst)
             if dst_time < src_time:
-                log.notice("Source file %s has changed, updating %s" % (self.file, self.target), "Rules")
+                log.notice("Source file %s has changed, updating %s" % (self.file, self.target), "Rules/Build")
             act(src, dst)
 
     # {{{2 Install
     def _installAction(self):
         if not self.options.has_key("def_install") or self.options['def_install'] in ('', 'def_install'):
-            log.debug("Applying def_install to %s." % self.file, "Rules")
+            log.debug("Applying def_install to %s." % self.file, "Rules/Install")
             cfg = config.getConfig()
             root = cfg.getRoot()
             src = os.path.join(root, 'dst', self.file)
@@ -143,10 +143,10 @@ class FileRule:
         else:
             act = self.options['def_install']
             if 'std_' + act in dir(actions):
-                log.debug("Applying non-default install method %s to %s." % (act, self.file), "Rules")
+                log.debug("Applying non-default install method %s to %s." % (act, self.file), "Rules/Install")
                 return eval('actions.' + act)
             else:
-                log.debug("Calling %s for installing %s to %s" % (act, self.file, self.target), "Rules")
+                log.debug("Calling %s for installing %s to %s" % (act, self.file, self.target), "Rules/Install")
                 return actions.call_cmd(act)
 
     def install(self):
@@ -159,12 +159,12 @@ class FileRule:
         act = self._installAction()
         self._preinstall(src, dst)
         if not os.path.exists(dst):
-            log.notice("Target for %s doesn't exist yet." % src, "Rules")
+            log.notice("Target for %s doesn't exist yet." % src, "Rules/Install")
             act(src, dst)
         else:
             dst_time = getTime(dst)
             if src_time < dst_time:
-                log.warn("Target %s has changed more recently than %s !!!" % (dst, src), "Rules")
+                log.warn("Target %s has changed more recently than %s !!!" % (dst, src), "Rules/Install")
             act(src, dst)
         self._postinstall(src, dst)
 
@@ -184,7 +184,7 @@ class FileRule:
     # {{{2 retrieve
     def _retrieveAction(self):
         if not self.options.has_key("def_retrieve") or self.options['def_retrieve'] in ('', 'def_retrieve'):
-            log.debug("Applying def_retrieve to %s." % self.file, "Rules")
+            log.debug("Applying def_retrieve to %s." % self.file, "Rules/Retrieve")
             cfg = config.getConfig()
             install_root = cfg.getInstallRoot()
             installed = os.path.join(install_root, self.target)
@@ -195,10 +195,10 @@ class FileRule:
         else:
             act = self.options['def_retrieve']
             if 'std_' + act in dir(actions):
-                log.debug("Applying non-default retrieve method %s to %s." % (act, self.file), "Rules")
+                log.debug("Applying non-default retrieve method %s to %s." % (act, self.file), "Rules/Retrieve")
                 return eval('actions.' + act)
             else:
-                log.debug("Calling %s for retrieveing %s to %s" % (act, self.file, self.target), "Rules")
+                log.debug("Calling %s for retrieveing %s to %s" % (act, self.file, self.target), "Rules/Retrieve")
                 return actions.call_cmd(act)
 
     def retrieve(self):
@@ -209,17 +209,17 @@ class FileRule:
         src = os.path.join(root, 'dst', self.file)
         act = self._retrieveAction()
         if not os.path.exists(src):
-            log.warn("Trying to retrieve %s, not available in repo !!" % installed, "Rules")
+            log.warn("Trying to retrieve %s, not available in repo !!" % installed, "Rules/Retrieve")
             act(installed, src)
         elif not os.path.exists(installed):
-            log.crit("Unable to retrieve non-existing file %s" % installed, "Rules")
+            log.crit("Unable to retrieve non-existing file %s" % installed, "Rules/Retrieve")
         else:
             act(installed, src)
 
     # {{{2 backport
     def _backportAction(self):
         if not self.options.has_key("def_backport") or self.options['def_backport'] in ('', 'def_backport'):
-            log.debug("Applying def_backport to %s." % self.file, "Rules")
+            log.debug("Applying def_backport to %s." % self.file, "Rules/Backport")
             cfg = config.getConfig()
             root = cfg.getRoot()
             dst = os.path.join(root, 'dst', self.file)
@@ -228,10 +228,10 @@ class FileRule:
         else:
             act = self.options['def_backport']
             if 'std_' + act in dir(actions):
-                log.debug("Applying non-default backport method %s to %s." % (act, self.file), "Rules")
+                log.debug("Applying non-default backport method %s to %s." % (act, self.file), "Rules/Backport")
                 return eval('actions.' + act)
             else:
-                log.debug("Calling %s for backporting %s to %s" % (act, self.file, self.target), "Rules")
+                log.debug("Calling %s for backporting %s to %s" % (act, self.file, self.target), "Rules/Backport")
                 return actions.call_cmd(act)
 
     def backport(self):
@@ -241,29 +241,29 @@ class FileRule:
         dst = os.path.join(root, 'dst', self.file)
         act = self._backportAction()
         if not os.path.exists(src):
-            log.warn("Trying to backport to %s, which doesn't exist !" % src, "Rules")
+            log.warn("Trying to backport to %s, which doesn't exist !" % src, "Rules/Backport")
             act(dst, src)
         elif not os.path.exists(dst):
-            log.crit("Unable to backport non-existing file %s" % dst, "Rules")
+            log.crit("Unable to backport non-existing file %s" % dst, "Rules/Backport")
         else:
             time_src = getTime(src)
             time_dst = getTime(dst)
             if time_src > time_dst:
-                log.warn("Warning : backporting %s onto %s which changed more recently" % (dst, src), "Rules")
+                log.warn("Warning : backporting %s onto %s which changed more recently" % (dst, src), "Rules/Backport")
             act(dst, src)
 
     # {{{2 diff
     def _diffAction(self):
         if not self.options.has_key("def_diff") or self.options['def_diff'] in ('', 'def_diff'):
-            log.debug("Applying def_diff to %s." % self.file, "Rules")
+            log.debug("Applying def_diff to %s." % self.file, "Rules/Diff")
             return actions.def_diff()
         else:
             act = self.options['def_diff']
             if 'std_' + act in dir(actions):
-                log.debug("Applying non-default diff method %s to %s." % (act, self.file), "Rules")
+                log.debug("Applying non-default diff method %s to %s." % (act, self.file), "Rules/Diff")
                 return eval('actions.' + act)
             else:
-                log.debug("Calling %s for diffing %s with %s" % (act, self.file, self.target), "Rules")
+                log.debug("Calling %s for diffing %s with %s" % (act, self.file, self.target), "Rules/Diff")
                 return actions.call_cmd(act)
 
     def diff(self):
@@ -273,9 +273,9 @@ class FileRule:
         src = os.path.join(root, 'dst', self.file)
         dst = os.path.join(install_root, self.target)
         if not os.path.exists(src):
-            log.warn("Trying to find diffs for %s, which doesn't exist !" % self.file, "Rules")
+            log.warn("Trying to find diffs for %s, which doesn't exist !" % self.file, "Rules/Diff")
         elif not os.path.exists(dst):
-            log.warn("Installed file %s doesn't exist !" % dst, "Rules")
+            log.warn("Installed file %s doesn't exist !" % dst, "Rules/Diff")
         act = self._diffAction()
         act(src, dst)
 
@@ -283,15 +283,15 @@ class FileRule:
     def _checkAction(self):
         """Returns the action for checking : generally def_check"""
         if not self.options.has_key("def_check") or self.options['def_check'] in ('', 'def_check'):
-            log.debug("Applying def_check to %s." % self.file, "Rules")
+            log.debug("Applying def_check to %s." % self.file, "Rules/Check")
             return actions.def_check()
         else:
             act = self.options['def_check']
             if 'std_' + act in dir(actions):
-                log.debug("Applying non-default check method %s to %s." % (act, self.file), "Rules")
+                log.debug("Applying non-default check method %s to %s." % (act, self.file), "Rules/Check")
                 return eval('actions.' + act)
             else:
-                log.debug("Calling %s for checking %s with %s" % (act, self.file, self.target), "Rules")
+                log.debug("Calling %s for checking %s with %s" % (act, self.file, self.target), "Rules/Check")
                 return actions.call_cmd(act)
 
     def check(self):
@@ -302,11 +302,11 @@ class FileRule:
         dst = os.path.join(root, 'dst', self.file)
         installed = os.path.join(install_root, self.target)
         if not os.path.exists(src):
-            log.warn("Source file %s is missing !!" % src, "Rules")
+            log.warn("Source file %s is missing !!" % src, "Rules/Check")
         if not os.path.exists(dst):
-            log.warn("Compiled file %s is missing !!" % dst, "Rules")
+            log.warn("Compiled file %s is missing !!" % dst, "Rules/Check")
         if not os.path.exists(installed):
-            log.warn("Installed file %s is missing !!" % installed, "Rules")
+            log.warn("Installed file %s is missing !!" % installed, "Rules/Check")
         act = self._checkAction()
         act(src, dst, installed)
 
