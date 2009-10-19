@@ -69,23 +69,24 @@ def fulldebug(msg, module = None, with_success = False):
 # {{{1 Success / fail
 __esc_seq = "\x1b["
 __colors = dict()
-__colors["reset"]   = __esc_seq + "39;49;00m"
-__colors["red"]     = __esc_seq + "31m"
-__colors["green"]   = __esc_seq + "32m"
-__colors["yellow"]  = __esc_seq + "33m"
-__colors["blue"]    = __esc_seq + "34m"
-__colors["magenta"] = __esc_seq + "35m"
-__colors["cyan"]    = __esc_seq + "36m"
-__colors["white"]   = __esc_seq + "37m"
-__colors["grey"]    = __esc_seq + "30;01m"
+__colors["reset"]       = __esc_seq + "39;49;00m"
+__colors["grey"]        = __esc_seq + "30;01m"
+__colors["red"]         = __esc_seq + "31m"
+__colors["green"]       = __esc_seq + "32m"
+__colors["yellow"]      = __esc_seq + "33m"
+__colors["blue"]        = __esc_seq + "34m"
+__colors["magenta"]     = __esc_seq + "35m"
+__colors["darkmagenta"] = __esc_seq + "35;01m"
+__colors["cyan"]        = __esc_seq + "36m"
+__colors["white"]       = __esc_seq + "37m"
 
-__module_colors = dict()
-__module_colors[FULLDEBUG] = "grey"
-__module_colors[DEBUG] = "blue"
-__module_colors[NOTICE] = "cyan"
-__module_colors[INFO] = ""
-__module_colors[WARN] = "yellow"
-__module_colors[CRIT] = "red"
+__module_colors             = dict()
+__module_colors[FULLDEBUG]  = "grey"
+__module_colors[DEBUG]      = "blue"
+__module_colors[NOTICE]     = "cyan"
+__module_colors[INFO]       = ""
+__module_colors[WARN]       = "yellow"
+__module_colors[CRIT]       = "red"
 
 def __colorize(code, txt):
     if LogLevelHolder.have_color and code in __colors.keys():
@@ -126,7 +127,8 @@ def show(msg, level, module = None, with_success = False):
     if level >= getLogLevel() :
         if module != None:
             color = __module_colors[level]
-            msg = __colorize("magenta", "[") + __colorize(color, module) + __colorize("magenta", "]") + " " + msg
+            colored_module = __colorize("darkmagenta", "/").join([__colorize(color, mod) for mod in module.split('/')])
+            msg = __colorize("magenta", "[") + colored_module + __colorize("magenta", "]") + " " + msg
         sys.stderr.write(msg)
         if with_success:
             LogLevelHolder.success_level = level
