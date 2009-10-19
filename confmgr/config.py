@@ -112,7 +112,7 @@ class Config:
                 if m != None:
                     section = m.group(1)
                 else:
-                    if section == "DEFAULT":
+                    if section.upper() == "DEFAULT":
                         m = re_cfg_row.match(row)
                         if m != None:
                             (key, val) = m.groups()
