@@ -7,6 +7,12 @@ import os, re
 # Local imports
 import log, config, actions
 
+def isSubdir(path, dir):
+    """Tells whether a path is inside the repo root"""
+    absdir = os.path.abspath(dir)
+    abs = os.path.normpath(os.path.join(dir, path))
+    return (absdir == os.path.commonprefix([abs, absdir]))
+
 # {{{1 def getTime()
 def getTime(file):
     cfg = config.getConfig()
