@@ -17,12 +17,16 @@ def setInitialLogLevel():
     verb = 0
     # Skip args 0 (binary name) and 1 (command)
     for arg in sys.argv[2:]:
-        if arg == "-v":
-            verb += 1
-        elif arg == "-q":
-            verb -= 1
-        else:
-            break
+        if arg[:2] == "-v" or arg[:2] == "-q":
+            tmp_verb = 0
+            for p in arg[1:]:
+                if p == "v":
+                    tmp_verb += 1
+                elif p == "q":
+                    tmp_verb -= 1
+                else:
+                    break
+            verb += tmp_verb
     setLogLevel(getLogLevelFromVerbosity(verb))
 
 # Class holding current log level
@@ -39,8 +43,13 @@ def setLogLevel(level):
 def getLogLevelFromVerbosity(verb):
     """Converts a 'verbosity' level to a log level
 
-    Verbosity ranges from -2 (Only CRIT) to +2 (All to DEBUG)"""
-    return (10 - (5 * verb))
+    Verbosity ranges from -2 (Only CRIT) to +3 (All to FULLDEBUG)"""
+    if verb < FULLDEBUG:
+        return getLogLevelFromVerbosity(FULLDEBUG)
+    elif verb > CRIT:
+        return getLogLevelFromVerbosity(CRIT)
+    else:
+        return (10 - (5 * verb))
 
 def getLogLevel():
     return LogLevelHolder.logLevel

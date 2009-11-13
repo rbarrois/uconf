@@ -55,6 +55,7 @@ Global options :
         elif argv[0] in confmgr.modules:
             confmgr.call(argv[0], argv[1:])
         else:
-            sys.stdout.write("Unknown command %s\n\n" % argv[1])
+            if len(argv) > 1:
+                sys.stdout.write("Unknown command %s\n\n" % argv[1])
             sys.stdout.write(short_help)
             sys.exit(1)
