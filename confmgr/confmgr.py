@@ -1,10 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import sys, os, optparse
+import sys, os, optparse, subprocess, shutil
 
 # local imports
-import log, config, actions
+import log, config, actions, misc
 
 #version = @@VERSION@@
 version = 0.1
@@ -18,7 +18,7 @@ def __checkCfg(findRoot = True):
         cfg.findRoot()
     return cfg
 
-modules = ["init", "update", "build", "install", "diff", "check", "retrieve", "backport" ]
+modules = ["init", "update", "build", "install", "diff", "check", "retrieve", "backport", "import" ]
 
 def printVersion():
     sys.stdout.write("""Confmgr %s
@@ -79,6 +79,56 @@ def call(command, args):
     __set_verb(opts)
     return mth(opts, args)
 
+# {{{1 do_import
+def do_import(path, folder, cat="All"):
+    cfg = config.getConfig()
+    repo_root = cfg.getRoot()
+    install_root = cfg.getInstallRoot()
+    src_path = os.path.join(repo_root, 'src')
+    absfolder = os.path.join(src_path, folder)
+
+    if not os.path.exists(absfolder):
+        log.notice("Creating the %s folder" % absfolder)
+        os.makedirs(absfolder)
+
+    if not os.path.isdir(absfolder):
+        log.crit("Unable to create %s, skipping file." % absfolder)
+
+    pathfile = os.path.join(absfolder, '__paths')
+    files = []
+
+    abspath = os.path.abspath(path)
+    is_folder = (os.path.basename(path) == '' or os.path.isdir(abspath))
+    if is_folder:
+        # Folder
+        log.debug("Importing folder %s" % abspath, module="Import")
+        if not os.path.exists(abspath):
+            log.warn("Folder %s doesn't exist, skipping." % abspath)
+            return
+        fnd = subprocess.Popen(["find", abspath, "-type", "f"], stdout = subprocess.PIPE).communicate()[0]
+        for row in fnd.split():
+            files.append((os.path.relpath(row, abspath), row))
+    else:
+        # Regular file
+        log.debug("Importing file %s" % abspath, module="Import")
+        if not os.path.exists(abspath):
+            log.warn("File %s doesn't exist, I won't copy it into the 'src' folder." % abspath)
+        files = [(os.path.basename(path), abspath)]
+
+    files.sort()
+    # Handle files
+    with open(pathfile, 'a') as f:
+        for (file, install_file) in files:
+            relp = os.path.relpath(install_file, install_root)
+            log.debug("Adding file %s" % file, module="Import")
+            f.write("%s %s\n" % (file, relp))
+            if os.path.exists(install_file):
+                dirname = os.path.dirname(file)
+                absdirname = os.path.join(absfolder, dirname)
+                if dirname != '' and dirname != '.' and not os.path.exists(absdirname):
+                    os.makedirs(absdirname)
+                shutil.copy(install_file, os.path.join(absfolder, file))
+
 # {{{1 commands
 
 # {{{2 cmd_init
@@ -101,6 +151,35 @@ def __parse_update(args):
 def cmd_update(opts, args):
     """Update repo (through an update of the VCS)"""
     cfg = __checkCfg()
+
+# {{{2 cmd_import
+def __parse_import(args):
+    """Parses args and returns (opts, args)"""
+    parser = __init_parser(cmd_import)
+    parser.add_option("-c", "--category", action="store", dest="cat", default="all", help="Put the files into category CAT")
+    parser.add_option("-f", "--folder", action="store", dest="folder", default=None, help="Import files into FOLDER (FOLDER is taken relative to the 'src' folder of the repo)")
+    return parser.parse_args(args)
+
+def cmd_import(opts, args):
+    """Import a folder into the repo"""
+    cfg = __checkCfg()
+
+    if opts.folder == None:
+        log.crit("Error : The 'folder' argument is mandatory.")
+        sys.exit(1)
+    repo_root = cfg.getRoot()
+    src_path = os.path.join(repo_root, 'src')
+    folder = os.path.normpath(opts.folder)
+
+    if not misc.isSubdir(folder, os.path.join(repo_root, 'src')):
+        log.crit("Error : the target folder must be within the 'src' folder of repo (given : %s)" % folder)
+        sys.exit(1)
+    folder = os.path.relpath(os.path.join(src_path, folder), src_path)
+    log.info("Adding files to the %s folder (%s)" % (folder, os.path.join(src_path, folder)))
+
+    cat = opts.cat
+    for file in args:
+        do_import(file, folder=folder, cat=cat)
 
 # {{{2 cmd_build
 def __parse_build(args):
@@ -138,6 +217,7 @@ def cmd_build(opts, files):
 def __parse_install(args):
     """Parses args and returns (opts, args)"""
     parser = __init_parser(cmd_install)
+    parser.add_option("-f", "--force", action="store_true", dest="force", help="Force install")
     return parser.parse_args(args)
 
 def cmd_install(opts, args):
