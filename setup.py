@@ -4,7 +4,7 @@
 from distutils.core import setup
 
 setup(name = 'confmgr',
-        version = '0.1.0',
+        version = '@VERSION@',
         description = 'Tool for managing config files',
         author = "Raphaël Barrois",
         author_email = "raphael.barrois@xelmail.com",

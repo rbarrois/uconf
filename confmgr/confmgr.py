@@ -7,7 +7,7 @@ import sys, os, optparse, subprocess, shutil
 import log, config, actions, misc
 
 #version = @@VERSION@@
-version = 0.1
+version = '@VERSION@'
 
 # {{{1 __checkCfg
 def __checkCfg(findRoot = True):
