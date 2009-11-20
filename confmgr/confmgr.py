@@ -131,6 +131,23 @@ def do_import(path, folder, cat="All"):
     with open(os.path.join(repo_root, "config"), 'a') as g:
         g.write("%s: %s\n" % (cat, ' '.join([os.path.join(folder,file) for (file, install_file) in files])))
 
+def do_init(root, install_root):
+    """Initializes a repo in 'root' with the given 'install_root'"""
+    hostname = subprocess.Popen(["hostname", "-s"], stdout=subprocess.PIPE).communicate()[0][:-1]
+    conf = os.path.join(root, "config")
+    skel =
+    """[default]
+install_root = %s
+
+[cats]
+%s = all
+
+[files]
+""" % (install_root, hostname)
+    with open(conf, 'w') as f:
+        f.write(skel)
+    os.mkdir(os.path.join(root, 'src'))
+    os.mkdir(os.path.join(root, 'dst'))
 
 # {{{1 commands
 
@@ -138,12 +155,14 @@ def do_import(path, folder, cat="All"):
 def __parse_init(args):
     """Parses args and returns (opts, args)"""
     parser = __init_parser(cmd_init)
+    parser.add_option("-i", "--install-path", action="store", dest="install_root", default="", help="Path for installed files")
     return parser.parse_args(args)
 
 def cmd_init(opts, args):
     """Initialize a confmgr repo here"""
     cfg = __checkCfg(False)
     cfg.setRoot(os.getcwd())
+    do_init(cfg.getRoot(), opts.install_root)
 
 # {{{2 cmd_update
 def __parse_update(args):
