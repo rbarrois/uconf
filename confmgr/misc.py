@@ -131,6 +131,9 @@ class FileRule:
         act = self._buildAction()
         if not os.path.exists(dst):
             log.notice("Target for %s doesn't exist yet." % self.file, "Rules/Build")
+            if not os.path.exists(os.path.dirname(dst)):
+                log.notice("Folder for %s doesn't exist, creating." % self.file, "Rules/Build")
+                os.makedirs(os.path.dirname(dst))
             act(src, dst)
         else:
             dst_time = getTime(dst)
