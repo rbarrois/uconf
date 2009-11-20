@@ -121,7 +121,7 @@ def do_import(path, folder, cat="All"):
     with open(pathfile, 'a') as f:
         for (file, install_file) in files:
             relp = os.path.relpath(install_file, install_root)
-            log.debug("Adding file %s" % file, module="Import")
+            log.info("Adding file %s" % file, module="Import")
             f.write("%s %s\n" % (file, relp))
             if os.path.exists(install_file):
                 dirname = os.path.dirname(file)
