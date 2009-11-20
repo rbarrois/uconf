@@ -131,23 +131,28 @@ def do_import(path, folder, cat="All"):
     with open(os.path.join(repo_root, "config"), 'a') as g:
         g.write("%s: %s\n" % (cat, ' '.join([os.path.join(folder,file) for (file, install_file) in files])))
 
+# {{{1 do_init
 def do_init(root, install_root):
     """Initializes a repo in 'root' with the given 'install_root'"""
     hostname = subprocess.Popen(["hostname", "-s"], stdout=subprocess.PIPE).communicate()[0][:-1]
+
     conf = os.path.join(root, "config")
-    skel =
-    """[default]
-install_root = %s
+    if not os.path.exists(conf):
+        skel = """[default]
+    install_root = %s
 
-[cats]
-%s = all
+    [cats]
+    %s = all
 
-[files]
-""" % (install_root, hostname)
-    with open(conf, 'w') as f:
-        f.write(skel)
-    os.mkdir(os.path.join(root, 'src'))
-    os.mkdir(os.path.join(root, 'dst'))
+    [files]
+    """ % (install_root, hostname)
+        with open(conf, 'w') as f:
+            f.write(skel)
+
+    mkdirs = [os.path.join(root, dir) for dir in ['src', 'dst']]
+    for mkdir in mkdirs:
+        if not os.path.exists(mkdir):
+            os.mkdir(mkdir)
 
 # {{{1 commands
 
