@@ -128,6 +128,9 @@ def do_import(path, folder, cat="All"):
                 if dirname != '' and dirname != '.' and not os.path.exists(absdirname):
                     os.makedirs(absdirname)
                 shutil.copy(install_file, os.path.join(absfolder, file))
+    with open(os.path.join(repo_root, "config"), 'a') as g:
+        g.write("%s: %s\n" % (cat, ' '.join([os.path.join(folder,file) for (file, install_file) in files])))
+
 
 # {{{1 commands
 
