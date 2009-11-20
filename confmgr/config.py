@@ -207,6 +207,10 @@ class Config:
         translated ; nothing will be done to those in options."""
         commands = []
 
+        subdir = os.path.relpath(
+                os.path.dirname(path_file),
+                os.path.join(self.getRoot(), 'src'))
+
         re_file_init = re.compile('^[^ \t]')
         re_ignore_row = re.compile('^[ \t]*#')
         re_keep_going_row = re.compile(r'[^\\]\\$')
@@ -239,7 +243,7 @@ class Config:
             if len(parts) < 2:
                 log.warn("Too short line : %s" % command, "Config/PathFiles")
                 continue
-            file = parts[0]
+            file = os.path.join(subdir, parts[0])
             target = parts[1]
             options = ''
             if len(parts) == 3:
