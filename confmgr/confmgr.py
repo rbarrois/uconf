@@ -12,10 +12,10 @@ version = '@VERSION@'
 # {{{1 __checkCfg
 def __checkCfg(findRoot = True):
     cfg = config.getConfig()
-    if not cfg.finalized:
-        cfg.finalize()
     if findRoot:
-        cfg.findRoot()
+        cfg.setRoot(cfg.findRoot())
+        if not cfg.finalized:
+            cfg.finalize()
     return cfg
 
 modules = ["init", "update", "build", "install", "diff", "check", "retrieve", "backport", "import" ]
@@ -72,6 +72,7 @@ def call(command, args):
     __checkCfg(False)
     mth = __getMethod(command)
     parser = eval('__parse_' + command)
+    log.fulldebug("Found command %s" % command, "Caller")
     opts = None
     arg = None
     if parser != None:

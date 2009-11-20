@@ -58,12 +58,14 @@ class Config:
         path = os.getcwd()
         confRoot = self.getRoot()
         # Check whether we are already in the default config dir
-        if os.path.relpath(path, confRoot)[:2] is not "..":
+        if os.path.relpath(path, confRoot)[:2] != "..":
+            log.debug("Already within default root", "Config/FindRoot")
             return confRoot
 
         while path != "":
             if os.path.isdir(path):
                 if "config" in os.listdir(path):
+                    log.debug("Found repo root at %s" % path, "Config/FindRoot")
                     return path
                 else:
                     path = os.path.dirname(path)
@@ -296,7 +298,7 @@ class FileExpandRule:
             else:
                 return set([])
 
-# Initiate cfg
+# {{{1 Initiate cfg
 if 'cfg' not in dir():
     log.fulldebug("cfg not created yet, initializing.", "Config")
     cfg = Config()
