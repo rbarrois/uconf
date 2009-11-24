@@ -277,15 +277,20 @@ def std_check(src, dst, installed):
     with open(dst, 'r') as f:
         dest = [line for line in f]
 
+    same = True
     # Check whether they differ
     md5_orig = getHash(orig)
     md5_dest = getHash(dest)
     if md5_orig != md5_dest:
         log.display("Found diff between %s and compiled version %s." % (src, dst))
+        same = False
 
     retcode = subprocess.call(["diff", dst, installed], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     if retcode != 0:
         log.display("Found diff between %s and installed version %s." % (dst, installed))
+        same = False
+    if same:
+        log.display("%s is up to date." % installed)
 
 # {{{1 custom command callers
 # {{{2 call_cmd(cmd)
