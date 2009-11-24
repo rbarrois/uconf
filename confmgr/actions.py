@@ -262,9 +262,12 @@ def std_none(src, target):
 
 # {{{2 std_diff
 def std_diff(src, dst):
-    log.info("vimdiff %s %s" % (src, dst))
     diff = subprocess.Popen(["diff", "-Nur", src, dst], stdout=subprocess.PIPE).communicate()[0]
-    [log.display(row) for row in diff.splitlines()]
+    if len(diff) > 0:
+        log.info("vimdiff %s %s" % (src, dst))
+        [log.display(row) for row in diff.splitlines()]
+    else:
+        log.info("No changes for %s" % src)
 
 # {{{2 std_check
 def std_check(src, dst, installed):
