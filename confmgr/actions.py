@@ -274,6 +274,10 @@ def std_check(src, dst, installed):
     # Load compiled versions
     with open(src, 'r') as f:
         orig = [line for line in get_output(f)]
+    if not os.path.exists(dst):
+        log.display("File %s hasn't be compiled, please run 'build'" % dst)
+        return
+
     with open(dst, 'r') as f:
         dest = [line for line in f]
 
