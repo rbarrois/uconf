@@ -193,7 +193,7 @@ def std_backport(src, dst):
     md5_orig = getHash(orig)
     md5_dest = getHash(dest)
     if md5_orig == md5_dest:
-        log.info("MD5 hash of %s[compiled] and %s are the same, skipping." % (src, dst))
+        log.info("Skipping %s (md5 hash of compiled and source are the same)." % src)
         return
 
     # Compute the diff
