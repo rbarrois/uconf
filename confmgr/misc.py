@@ -18,7 +18,8 @@ def getTime(file):
     cfg = config.getConfig()
     return os.path.getmtime(os.path.join(cfg.getRoot(), file))
 
-def parseOptions(options, def_options):
+# {{{1 def parseOptions
+def parseOptions(options, def_options, file = ""):
     r"""Parses a string of options :
     a,b=c,d="e f,g",h='i\'j',k="l\"m",n=o\,p
     into :
@@ -48,18 +49,20 @@ def parseOptions(options, def_options):
             escaping = False
         elif chr in ('\\'):
             if in_key:
-                log.crit("Unexpected '\\' char in option key for %s." % self.file, "ParseOptions")
+                log.crit("Unexpected '\\' char in option key for %s." % file, "ParseOptions")
                 return
             escaping = True
         elif quoting:
             if chr == quoter:
                 quoting = False
+                quotter = ''
             cur += chr
         elif chr in ('\'', '"'):
             if in_key:
-                log.crit("Forbidden %s char in option key for %s." % (chr, self.file), "ParseOptions")
+                log.crit("Forbidden %s char in option key for %s." % (chr, file), "ParseOptions")
                 return
             quoting = True
+            quotter = chr
             cur += chr
         elif chr == ',':
             if in_key:
@@ -71,16 +74,26 @@ def parseOptions(options, def_options):
             else:
                 opts[key] = cur
             key = ""
-            chr = ""
+            cur = ""
+            in_key = True
+        elif chr in ('='):
+            if in_key:
+                in_key = False
+            else:
+                log.crit("Unexpected '=' char in option key for %s." % file, "ParseOptions")
+                return
         else:
-            cur += chr
+            if in_key:
+                key += chr
+            else:
+                cur += chr
     if in_key:
         opts[key] = True
     elif quoting:
-        log.crit("Error : unclosed quotes in option %s for %s." % (key, self.file), "ParseOptions")
+        log.crit("Error : unclosed quotes in option %s for %s." % (key, file), "ParseOptions")
         sys.exit(2)
     elif escaping:
-        log.crit("Error : missing char after \\ in option %s for %s" % (key, self.file), "ParseOptions")
+        log.crit("Error : missing char after \\ in option %s for %s" % (key, file), "ParseOptions")
         sys.exit(2)
     else:
         if cur.lower() == 'true':
@@ -98,11 +111,12 @@ class FileRule:
         self.target = target
         self.parseOptions(options)
         log.debug("Added rule for '%s' : target is '%s', with options %s" % (file, target, options), "Rules")
+        log.fulldebug("Options are : %s" % repr(self.options), "FileRule/Options")
 
     def parseOptions(self, options):
         cfg = config.getConfig()
         # First get default options from cfg, then add ones for the file, then merge CLI ones
-        self.options = cfg.mergeCLIOptions(parseOptions(options, cfg.getRulesOptions()))
+        self.options = cfg.mergeCLIOptions(parseOptions(options, cfg.getRulesOptions(), self.file))
 
     # {{{2 Build
     def _buildAction(self):
@@ -116,7 +130,7 @@ class FileRule:
             act = self.options['def_build']
             if 'std_' + act in dir(actions):
                 log.debug("Applying non-default build method %s to %s." % (act, self.file), "Rules/Build")
-                return eval('actions.' + act)
+                return eval('actions.std_' + act)
             else:
                 log.debug("Calling %s for building %s to %s" % (act, self.file, self.target), "Rules/Build")
                 return actions.call_cmd(act)
@@ -158,7 +172,7 @@ class FileRule:
             act = self.options['def_install']
             if 'std_' + act in dir(actions):
                 log.debug("Applying non-default install method %s to %s." % (act, self.file), "Rules/Install")
-                return eval('actions.' + act)
+                return eval('actions.std_' + act)
             else:
                 log.debug("Calling %s for installing %s to %s" % (act, self.file, self.target), "Rules/Install")
                 return actions.call_cmd(act)
@@ -210,7 +224,7 @@ class FileRule:
             act = self.options['def_retrieve']
             if 'std_' + act in dir(actions):
                 log.debug("Applying non-default retrieve method %s to %s." % (act, self.file), "Rules/Retrieve")
-                return eval('actions.' + act)
+                return eval('actions.std_' + act)
             else:
                 log.debug("Calling %s for retrieveing %s to %s" % (act, self.file, self.target), "Rules/Retrieve")
                 return actions.call_cmd(act)
@@ -243,7 +257,7 @@ class FileRule:
             act = self.options['def_backport']
             if 'std_' + act in dir(actions):
                 log.debug("Applying non-default backport method %s to %s." % (act, self.file), "Rules/Backport")
-                return eval('actions.' + act)
+                return eval('actions.std_' + act)
             else:
                 log.debug("Calling %s for backporting %s to %s" % (act, self.file, self.target), "Rules/Backport")
                 return actions.call_cmd(act)
@@ -275,7 +289,7 @@ class FileRule:
             act = self.options['def_diff']
             if 'std_' + act in dir(actions):
                 log.debug("Applying non-default diff method %s to %s." % (act, self.file), "Rules/Diff")
-                return eval('actions.' + act)
+                return eval('actions.std_' + act)
             else:
                 log.debug("Calling %s for diffing %s with %s" % (act, self.file, self.target), "Rules/Diff")
                 return actions.call_cmd(act)
@@ -303,7 +317,7 @@ class FileRule:
             act = self.options['def_check']
             if 'std_' + act in dir(actions):
                 log.debug("Applying non-default check method %s to %s." % (act, self.file), "Rules/Check")
-                return eval('actions.' + act)
+                return eval('actions.std_' + act)
             else:
                 log.debug("Calling %s for checking %s with %s" % (act, self.file, self.target), "Rules/Check")
                 return actions.call_cmd(act)
