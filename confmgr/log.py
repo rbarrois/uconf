@@ -55,7 +55,7 @@ def getLogLevel():
     return LogLevelHolder.logLevel
 
 def display(msg, module = None):
-    show(msg, getLogLevel(), module, False)
+    show(msg, getLogLevel(), module, with_success = False, stdout = True)
 
 def crit(msg, module = None, with_success = False):
     show(msg, CRIT, module, with_success)
@@ -132,18 +132,22 @@ def __print_status(success = True):
     padding = " " * (cols - last_width - 6)
     sys.stderr.write(padding + msg + "\n")
 
-def show(msg, level, module = None, with_success = False):
+def show(msg, level, module = None, with_success = False, stdout = False):
+    if stdout:
+        out = sys.stdout
+    else:
+        out = sys.stderr
     if level >= getLogLevel() :
         if module != None:
             color = __module_colors[level]
             colored_module = __colorize("darkmagenta", "/").join([__colorize(color, mod) for mod in module.split('/')])
             msg = __colorize("magenta", "[") + colored_module + __colorize("magenta", "]") + " " + msg
-        sys.stderr.write(msg)
+        out.write(msg)
         if with_success:
             LogLevelHolder.success_level = level
             LogLevelHolder.last_width = len(msg.decode('utf-8'))
         else:
-            sys.stderr.write("\n")
+            out.write("\n")
 
 
 setInitialLogLevel()
