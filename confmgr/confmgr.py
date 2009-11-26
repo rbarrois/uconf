@@ -228,7 +228,11 @@ def cmd_build(opts, files):
     if len(files) > 0:
         for file in files:
             if file not in cfg.files:
-                log.warn("No configuration for file %s, ignoring." % file)
+                parts = file.split('/')
+                if (parts[0] == 'src' or parts[0] == 'dst') and '/'.join(parts[1:]) in cfg.files:
+                    _files.append('/'.join(parts[1:]))
+                else:
+                    log.warn("No configuration for file %s, ignoring." % file)
             else:
                 _files.append(file)
     else:
