@@ -127,8 +127,11 @@ class FileRule:
         root = cfg.getRoot()
         src = os.path.join(root, 'src', self.file)
         dst = os.path.join(root, 'dst', self.file)
-        src_time = getTime(src)
         act = self._buildAction()
+        if not os.path.exists(src):
+            log.crit("Source for %s doesn't exist." % src, "Rules/Build")
+            return
+        src_time = getTime(src)
         if not os.path.exists(dst):
             log.notice("Target for %s doesn't exist yet." % self.file, "Rules/Build")
             if not os.path.exists(os.path.dirname(dst)):
@@ -139,7 +142,9 @@ class FileRule:
             dst_time = getTime(dst)
             if dst_time < src_time:
                 log.notice("Source file %s has changed, updating %s" % (self.file, self.target), "Rules/Build")
-            act(src, dst)
+                act(src, dst)
+            else:
+                log.notice("Target file %s is more recent than source, skipping" % self.target, "Rules/Build")
 
     # {{{2 Install
     def _installAction(self):
