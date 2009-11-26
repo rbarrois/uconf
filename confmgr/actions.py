@@ -11,7 +11,7 @@ import log, config, misc
 def isTextFile(file):
     """Determines, through 'file -b FILE', whether FILE is text"""
     type = subprocess.Popen(['file', '-b', file], stdout=subprocess.PIPE).communicate()[0]
-    return ('text' in type.split())
+    return ('text' in [x.strip(' ,.') for x in type.split()])
 
 def getHash(strings):
     """Returns the md5 hash of the strings row array"""
