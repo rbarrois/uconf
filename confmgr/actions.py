@@ -21,7 +21,7 @@ def getHash(strings):
     return hash.hexdigest()
 
 def linkTarget(file):
-    if not os.islink(file):
+    if not os.path.islink(file):
         return None
     else:
         return os.path.join(os.path.dirname(file), os.readlink(file))
@@ -224,6 +224,10 @@ def std_backport(src, dst):
 # {{{2 std_install
 def std_install(src, dst):
     log.info("Installing %s on %s" % (src, dst), with_success = True)
+    if not os.path.exists(os.path.dirname(dst)):
+        dir = os.path.dirname(dst)
+        log.notice("Folder %s doesn't exist, creating" % dir)
+        os.makedirs(dir)
     (dstname, copied) = f_util.copy_file(src, dst, preserve_mode = True, preserve_times = True, update = True)
     if copied:
         log.success()
@@ -233,21 +237,26 @@ def std_install(src, dst):
 # {{{2 std_copy
 def std_copy(src, dst):
     log.info("Copying %s to %s" % (src, dst), with_success = True)
-    f_util.copy_file(src, dst, preserve_mode = False, preserve_times = True, update = True)
+    f_util.copy_file(src, dst, preserve_mode = False, preserve_times = True, update = False)
     log.success()
 
 # {{{2 std_copy_link
 def std_copy_link(src, dst):
     log.info("Replicating symlink %s to %s" % (src, dst), with_success = True)
     tgt = os.readlink(src)
-    os.unlink(dst)
-    os.symlink(dst, tgt)
+    if os.path.exists(dst):
+        os.unlink(dst)
+    os.symlink(tgt, dst)
     log.success()
 
 # {{{2 std_retrieve
 def std_retrieve(installed, src):
     log.info("Retrieving %s from %s" % (src, installed), with_success = True)
-    f_util.copy_file(installed, src, update = True)
+    if not os.path.exists(os.path.dirname(src)):
+        dir = os.path.dirname(src)
+        log.notice("Folder %s doesn't exist, creating" % dir)
+        os.makedirs(dir)
+    f_util.copy_file(installed, src, update = False)
     log.success()
 
 # {{{2 std_link
@@ -264,7 +273,7 @@ def std_none(src, target):
 def std_diff(src, dst):
     diff = subprocess.Popen(["diff", "-Nur", src, dst], stdout=subprocess.PIPE).communicate()[0]
     if len(diff) > 0:
-        log.info("vimdiff %s %s" % (src, dst))
+        log.display("vimdiff %s %s" % (src, dst))
         [log.display(row) for row in diff.splitlines()]
     else:
         log.info("No changes for %s" % src)
@@ -289,7 +298,9 @@ def std_check(src, dst, installed):
         log.display("Found diff between %s and compiled version %s." % (src, dst))
         same = False
 
-    retcode = subprocess.call(["diff", dst, installed], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    log.fulldebug("Calling diff %s %s" % (dst, installed), "Actions/Check")
+    DEVNULL = open('/dev/null', 'w')
+    retcode = subprocess.call(["diff", dst, installed], stdout = DEVNULL, stderr = DEVNULL)
     if retcode != 0:
         log.display("Found diff between %s and installed version %s." % (dst, installed))
         same = False
