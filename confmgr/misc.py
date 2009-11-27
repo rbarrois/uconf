@@ -402,7 +402,7 @@ def parse_cplx_pre(pre):
 
     log.debug("Parsing %s" % pre, "RuleParser")
 
-    split_re = '[ \t]*([()!]|and|or|not|&&|\|\|)[ \t]*'
+    split_re = '[ \t]*([()!]|[ \t]and[ \t]|[ \t]or[ \t]|[ \t]not[ \t]|&&|\|\|)[ \t]*'
     rawparts = re.split(split_re, pre)
     parts = []
     for part in rawparts:
