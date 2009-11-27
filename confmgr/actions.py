@@ -180,7 +180,7 @@ def std_build(src, dst):
     log.success()
 
 # {{{2 std_backport
-def std_backport(src, dst):
+def std_backport(dst, src):
     """Finds differences between dst version and result of the compilation of src, and adapts src as needed"""
 
     # Load compiled versions
@@ -207,10 +207,11 @@ def std_backport(src, dst):
         for (do_print, txt, raw) in parse_file(f):
             if do_print:
                 dif = diff.next()
+                log.fulldebug(dif)
                 while dif[0] == '+':
                     newsrc.append(revert(dif[2:]))
                     dif = diff.next()
-                if dif[0] == '-':
+                if dif[0] == '-' or dif[0] == '?':
                     continue
                 else:
                     newsrc.append(raw)
