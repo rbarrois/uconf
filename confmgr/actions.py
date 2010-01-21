@@ -207,18 +207,21 @@ def std_backport(dst, src):
         for (do_print, txt, raw) in parse_file(f):
             if do_print:
                 dif = diff.next()
-                log.fulldebug(dif)
-                while dif[0] == '+':
-                    newsrc.append(revert(dif[2:]))
+                log.fulldebug(dif, 'Backport')
+                while dif[0] in ('+', '?'):
+                    if dif[0] == '+':
+                        newsrc.append(revert(dif[2:]))
                     dif = diff.next()
-                if dif[0] == '-' or dif[0] == '?':
+                    log.fulldebug(dif, 'Backport')
+                if dif[0] == '-':
                     continue
                 else:
                     newsrc.append(raw)
             else:
                 newsrc.append(raw)
     for dif in diff:
-        newsrc.append(dif[2:])
+        if dif[0] == '+':
+            newsrc.append(dif[2:])
     with open(src, 'w') as f:
         [f.write(line) for line in newsrc]
 
