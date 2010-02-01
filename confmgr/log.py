@@ -33,8 +33,10 @@ def setInitialLogLevel():
 class LogLevelHolder:
     logLevel = INFO
     success_level = INFO
+    with_success = False
     last_width = 0
     have_color = True
+    last_level = INFO
 
 def setLogLevel(level):
     if level <= CRIT:
@@ -125,29 +127,57 @@ def fail():
 def __print_status(success = True):
     lines, cols = __screensize()
     last_width = LogLevelHolder.last_width
+    spacers = cols - ( last_width % cols ) - 6
     if success:
         msg = __colorize("blue", "[ ") + __colorize("green", "ok") + __colorize("blue", " ]")
     else:
         msg = __colorize("blue", "[ ") + __colorize("red", "!!") + __colorize("blue", " ]")
-    padding = " " * (cols - last_width - 6)
+    padding = " " * spacers
     sys.stderr.write(padding + msg + "\n")
+    LogLevelHolder.with_success = False
+
+def comment(msg):
+    show(' ' * 4 + msg, level = LogLevelHolder.last_level)
+
+def showActionResult(actres):
+    """Prints the result of an action"""
+    if actres.success:
+        success()
+    else:
+        fail()
+    LogLevelHolder.last_level = LogLevelHolder.success_level
+    if actres.msg != None:
+        if isinstance(actres.msg, str):
+            comment(actres.msg)
+        else:
+            [comment(msg) for msg in actres.msg]
 
 def show(msg, level, module = None, with_success = False, stdout = False):
     if stdout:
         out = sys.stdout
     else:
         out = sys.stderr
+    LogLevelHolder.last_level = level
     if level >= getLogLevel() :
         if module != None:
             color = __module_colors[level]
             colored_module = __colorize("darkmagenta", "/").join([__colorize(color, mod) for mod in module.split('/')])
             msg = __colorize("magenta", "[") + colored_module + __colorize("magenta", "]") + " " + msg
-        out.write(msg)
+
         if with_success:
             LogLevelHolder.success_level = level
+            LogLevelHolder.with_success = True
             LogLevelHolder.last_width = len(msg.decode('utf-8'))
+            out.write(msg)
         else:
+            # Break line
+            if LogLevelHolder.with_success:
+                out.write("\n")
+                # We broke the "with_success"
+                LogLevelHolder.with_success = False
+            out.write(msg)
             out.write("\n")
+            LogLevelHolder.last_width = 0
 
 
 setInitialLogLevel()
