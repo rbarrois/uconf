@@ -128,12 +128,12 @@ class FileRule:
             return actions.def_build(src)
         else:
             act = self.options['def_build']
-            if 'std_' + act in dir(actions):
+            if actions.actionExists('std' + act + 'action'):
                 log.debug("Applying non-default build method %s to %s." % (act, self.file), "Rules/Build")
-                return eval('actions.std_' + act)
+                return eval('actions.' + actions.actionName('std' + act + 'action') + '()')
             else:
                 log.debug("Calling %s for building %s to %s" % (act, self.file, self.target), "Rules/Build")
-                return actions.call_cmd(act)
+                return actions.callCmdAction(act)
 
     def build(self):
         cfg = config.getConfig()
@@ -151,12 +151,12 @@ class FileRule:
             if not os.path.exists(os.path.dirname(dst)):
                 log.notice("Folder for %s doesn't exist, creating." % self.file, "Rules/Build")
                 os.makedirs(os.path.dirname(dst))
-            act(src, dst)
+            act.apply(src, dst)
         else:
             dst_time = getTime(dst)
             if dst_time < src_time:
                 log.notice("Source file %s has changed, updating %s" % (self.file, self.target), "Rules/Build")
-                act(src, dst)
+                act.apply(src, dst)
             else:
                 log.notice("Target file %s is more recent than source, skipping" % self.target, "Rules/Build")
 
@@ -188,12 +188,12 @@ class FileRule:
         self._preinstall(src, dst)
         if not os.path.exists(dst):
             log.notice("Target for %s doesn't exist yet." % src, "Rules/Install")
-            act(src, dst)
+            act.apply(src, dst)
         else:
             dst_time = getTime(dst)
             if src_time < dst_time:
                 log.warn("Target %s has changed more recently than %s." % (dst, src), "Rules/Install")
-            act(src, dst)
+            act.apply(src, dst)
         self._postinstall(src, dst)
 
     # {{{3 pre/post install actions
@@ -236,13 +236,12 @@ class FileRule:
         installed = os.path.join(install_root, self.target)
         src = os.path.join(root, 'dst', self.file)
         act = self._retrieveAction()
+        log.info("Retrieving %s" % self.file, with_success = True)
         if not os.path.exists(src):
             log.warn("Trying to retrieve %s, not available in repo !!" % installed, "Rules/Retrieve")
-            act(installed, src)
         elif not os.path.exists(installed):
-            log.crit("Unable to retrieve non-existing file %s" % installed, "Rules/Retrieve")
-        else:
-            act(installed, src)
+            return log.showActionResult(ActionResult(success = False, msg = "Unable to retrieve non-existing file %s" % installed))
+        log.showActionResult(act.apply(installed, src))
 
     # {{{2 backport
     def _backportAction(self):
@@ -255,12 +254,12 @@ class FileRule:
             return actions.def_backport(dst, src)
         else:
             act = self.options['def_backport']
-            if 'std_' + act in dir(actions):
+            if actions.actionExists('std' + act + 'action'):
                 log.debug("Applying non-default backport method %s to %s." % (act, self.file), "Rules/Backport")
-                return eval('actions.std_' + act)
+                return eval('actions.' + actions.actionName('std' + act + 'action') + '()' )
             else:
                 log.debug("Calling %s for backporting %s to %s" % (act, self.file, self.target), "Rules/Backport")
-                return actions.call_cmd(act)
+                return actions.callCmdAction(act)
 
     def backport(self):
         cfg = config.getConfig()
@@ -268,17 +267,17 @@ class FileRule:
         src = os.path.join(root, 'src', self.file)
         dst = os.path.join(root, 'dst', self.file)
         act = self._backportAction()
+        log.info("Backporting %s" % self.file, with_success = True)
         if not os.path.exists(src):
             log.warn("Trying to backport to %s, which doesn't exist !" % src, "Rules/Backport")
-            act(dst, src)
         elif not os.path.exists(dst):
-            log.crit("Unable to backport non-existing file %s" % dst, "Rules/Backport")
+            return log.showActionResult(actions.ActionResult(success = False, msg = "Unable to backport non-existing file %s" % dst))
         else:
             time_src = getTime(src)
             time_dst = getTime(dst)
             if time_src > time_dst:
                 log.warn("Warning : backporting %s onto %s which changed more recently" % (dst, src), "Rules/Backport")
-            act(dst, src)
+        log.showActionResult(act.apply(dst, src))
 
     # {{{2 diff
     def _diffAction(self):
@@ -305,7 +304,8 @@ class FileRule:
         elif not os.path.exists(dst):
             log.warn("Installed file %s doesn't exist !" % dst, "Rules/Diff")
         act = self._diffAction()
-        act(src, dst)
+        log.info("Running diff for %s" % self.file, with_success = True)
+        log.showActionResult(act.apply(src, dst))
 
     # {{{2 check
     def _checkAction(self):
@@ -335,8 +335,9 @@ class FileRule:
             log.warn("Compiled file %s is missing !!" % dst, "Rules/Check")
         if not os.path.exists(installed):
             log.warn("Installed file %s is missing !!" % installed, "Rules/Check")
+        log.info("Checking %s..." % src, with_success = True)
         act = self._checkAction()
-        act(src, dst, installed)
+        log.showActionResult(act.apply(src, dst, installed))
 
 
 

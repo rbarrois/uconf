@@ -102,12 +102,12 @@ def def_build(file):
     - copy_link (for symlinks)"""
 
     if os.path.islink(file):
-        return std_copy_link
+        return stdCopyLinkAction()
     else:
         if isTextFile(file):
-            return std_build
+            return stdBuildAction()
         else:
-            return std_copy
+            return stdCopyAction()
 
 # {{{2 def_install
 def def_install(file):
@@ -117,9 +117,9 @@ def def_install(file):
     - copy_link (for symlinks)"""
 
     if os.path.islink(file):
-        return std_copy_link
+        return stdCopyLinkAction()
     else:
-        return std_install
+        return stdInstallAction()
 
 # {{{2 def_retrieve
 def def_retrieve(file, src, dst):
@@ -132,11 +132,11 @@ def def_retrieve(file, src, dst):
     if os.path.islink(file):
         tgt = linkTarget(file)
         if tgt in (dst, src):
-            return std_none
+            return stdEmptyAction()
         else:
-            return std_copy_link
+            return stdCopyLinkAction()
     else:
-        return std_retrieve
+        return stdRetrieveAction()
 
 # {{{2 def_backport
 def def_backport(file, src):
@@ -149,174 +149,284 @@ def def_backport(file, src):
     if os.path.islink(file):
         tgt = linkTarget(file)
         if tgt == src:
-            return std_none
+            return stdEmptyAction()
         else:
-            return std_copy_link
+            return stdCopyLinkAction()
     else:
         if isTextFile(file):
-            return std_backport
+            return stdBackportAction()
         else:
-            return std_copy
+            return stdCopyAction()
 
 # {{{2 def_diff
 def def_diff():
     """Determines the correct action for diffing two files : always 'diff' :p"""
-    return std_diff
+    return stdDiffAction()
 
 # {{{2 def_check
 def def_check():
     """Determines the correct action for checking a file : always std_check :p"""
-    return std_check
+    return stdCheckAction()
 
 # {{{1 standard commands
+
+# {{{2 Model of actions
+from abc import ABCMeta, abstractmethod
+
+class ActionResult:
+    """Stores the result of an action, as a couple (success, msg) (msg being a list of str)"""
+    def __init__(self, success = False, msg = None):
+        self.success = success
+        self.msg = msg
+
+class Action(object):
+    """Stores an action.
+
+    This is an abstract class (cf doc of abc), all subclasses
+    must implement their "apply" method.
+    A given action should be applicable to a whole set of files ; custom parameters can be passed as second argument to "apply"
+    @param defaults Additional options to those from config
+    """
+
+    __metaclass__ = ABCMeta
+
+    def __init__(self, defaults = None):
+        self.defaults = dict()
+        cfg = config.getConfig()
+        for (key, val) in cfg.getActionsOptions(self.__class__.__name__).items():
+            self.defaults[key] = val
+        if defaults != None:
+            for (key, val) in defaults.getItems():
+                self.defaults[key] = val
+
+    def _default(self, key, defval = None):
+        """Retrieves values from self.defaults
+
+        @param key The name of the property being retrieved
+        @param defval The default value to return if self.defaults[key] isn't defined
+        @return either self.defaults[key], or defval
+        """
+        if not key in self.defaults:
+            return defval
+        else:
+            return self.defaults[key]
+
+    @abstractmethod
+    def apply(self, src, dst, *params):
+        """Applys the given action to a file
+        @param src is the filename to use as input
+        @param dst is the filename to use as output
+        @param params Other parameters
+        A rule should NEVER alter src.
+
+        The parent calling function will already have called log.info(..., with_success = True);
+        the function can add a comment (log.comment(...,). log.success() will be called
+        according to the return value.
+        """
+        return ActionResult(success = False, msg = "You called an empty 'apply' method")
+
+    def batchApply(self, batch):
+        """Applies the action to a batch of files
+        This file is a list of tuples (name, src, dst, param1, param2, ...)
+        It will return a dict of name => ActionResult of the action
+        """
+        res = dict()
+        for rule in batch:
+            if len(rule) < 3:
+                res.append(ActionResult(msg = "Empty rule ?!?"))
+            else:
+                res[rule[0]] = self.apply(rule[1], rule[2], *rule[3:])
+        return res
+
 # {{{2 std_build
-def std_build(src, dst):
-    """Builds (normally) a file"""
-    log.info("Building %s to %s" % (src, dst), with_success = True)
-    with open(dst, 'w') as g:
-        with open(src, 'r') as f:
-            for line in get_output(f):
-                g.write(line)
-    log.success()
+class stdBuildAction(Action):
+    """Default building of a file"""
+
+    def apply(self, src, dst, *params):
+        log.comment("Building %s to %s" % (src, dst))
+        with open(dst, 'w') as g:
+            with open(src, 'r') as f:
+                for line in get_output(f):
+                    g.write(line)
+        return ActionResult(success = True)
 
 # {{{2 std_backport
-def std_backport(dst, src):
-    """Finds differences between dst version and result of the compilation of src, and adapts src as needed"""
+class stdBackportAction(Action):
+    """Default backporting of a file to another one
 
-    # Load compiled versions
-    with open(src, 'r') as f:
-        orig = [line for line in get_output(f)]
-    with open(dst, 'r') as f:
-        dest = [line for line in f]
+    Its action is :
+        1. 'build' dst in memory
+        2. Find the diffs between that build version and src
+        3. Convert those diffs into diffs in the raw file
+        4. Apply those diffs to dst
+    """
 
-    # Check whether they differ
-    md5_orig = getHash(orig)
-    md5_dest = getHash(dest)
-    if md5_orig == md5_dest:
-        log.info("Skipping %s (md5 hash of compiled and source are the same)." % src)
-        return
+    def apply(self, src, dst, *params):
+        # Load compiled versions
+        with open(dst, 'r') as f:
+            orig = [line for line in get_output(f)]
+        with open(src, 'r') as f:
+            modified = [line for line in f]
+        # Check whether they differ
+        md5_orig = getHash(orig)
+        md5_dest = getHash(modified)
+        if md5_orig == md5_dest:
+            return ActionResult(success = True, msg = "Skipped (md5 hash of compiled and source are the same).")
 
-    # Compute the diff
-    newsrc = []
-    diff = difflib.ndiff(orig, dest)
+        # Compute the diff
+        newdst = []
+        diff = difflib.ndiff(orig, modified)
 
-    # For each line in the raw file, look at the diff and adapt :
-    #   if diff is + X, add X ; if diff is - X, don't print ; else, print
-    #   and continue to next line
-    with open(src, 'r') as f:
-        for (do_print, txt, raw) in parse_file(f):
-            if do_print:
-                dif = diff.next()
-                log.fulldebug(dif, 'Backport')
-                while dif[0] in ('+', '?'):
-                    if dif[0] == '+':
-                        newsrc.append(revert(dif[2:]))
+        # For each line in the raw file, look at the diff and adapt :
+        #   if diff is + X, add X ; if diff is - X, don't print ; else, print
+        #   and continue to next line
+        with open(dst, 'r') as f:
+            for (do_print, txt, raw) in parse_file(f):
+                if do_print:
                     dif = diff.next()
                     log.fulldebug(dif, 'Backport')
-                if dif[0] == '-':
-                    continue
+                    while dif[0] in ('+', '?'):
+                        if dif[0] == '+':
+                            newdst.append(revert(dif[2:]))
+                        dif = diff.next()
+                        log.fulldebug(dif, 'Backport')
+                    if dif[0] == '-':
+                        continue
+                    else:
+                        newdst.append(raw)
                 else:
-                    newsrc.append(raw)
-            else:
-                newsrc.append(raw)
-    for dif in diff:
-        if dif[0] == '+':
-            newsrc.append(dif[2:])
-    with open(src, 'w') as f:
-        [f.write(line) for line in newsrc]
+                    newdst.append(raw)
+        for dif in diff:
+            if dif[0] == '+':
+                newdst.append(dif[2:])
+        with open(dst, 'w') as f:
+            [f.write(line) for line in newdst]
+
+        return ActionResult(success = True)
 
 # {{{2 std_install
-def std_install(src, dst):
-    log.info("Installing %s on %s" % (src, dst), with_success = True)
-    if not os.path.exists(os.path.dirname(dst)):
-        dir = os.path.dirname(dst)
-        log.notice("Folder %s doesn't exist, creating" % dir)
-        os.makedirs(dir)
-    (dstname, copied) = f_util.copy_file(src, dst, preserve_mode = True, preserve_times = True, update = True)
-    if copied:
-        log.success()
-    else:
-        log.fail()
+class stdInstallAction(Action):
+    """Default installation of a file"""
+
+    def apply(self, src, dst, *params):
+        log.comment("Installing %s on %s" % (src, dst))
+        if not os.path.exists(os.path.dirname(dst)):
+            dir = os.path.dirname(dst)
+            log.comment("Folder %s doesn't exist, creating" % dir)
+            os.makedirs(dir)
+        (dstname, copied) = f_util.copy_file(src, dst, preserve_mode = True, preserve_times = True, update = True)
+        if copied:
+            return ActionResult(success = True)
+        else:
+            return ActionResult(success = False)
 
 # {{{2 std_copy
-def std_copy(src, dst):
-    log.info("Copying %s to %s" % (src, dst), with_success = True)
-    f_util.copy_file(src, dst, preserve_mode = False, preserve_times = True, update = False)
-    log.success()
+class stdCopyAction(Action):
+    """Default copy of a file (like install, but no checks)"""
+
+    def apply(self, src, dst, *params):
+        f_util.copy_file(src, dst, preserve_mode = False, preserve_times = True, update = False)
+        return ActionResult(success = True)
 
 # {{{2 std_copy_link
-def std_copy_link(src, dst):
-    log.info("Replicating symlink %s to %s" % (src, dst), with_success = True)
-    tgt = os.readlink(src)
-    if os.path.exists(dst):
-        os.unlink(dst)
-    os.symlink(tgt, dst)
-    log.success()
+class stdCopyLinkAction(Action):
+    """Copies a link (i.e if a->b is copied to c->b)"""
+
+    def apply(self, src, dst, *params):
+        log.comment("Replicating symlink %s to %s" % (src, dst))
+        tgt = os.readlink(src)
+        if os.path.exists(dst):
+            os.unlink(dst)
+        os.symlink(tgt, dst)
+        return ActionResult(success = True)
 
 # {{{2 std_retrieve
-def std_retrieve(installed, src):
-    log.info("Retrieving %s from %s" % (src, installed), with_success = True)
-    if not os.path.exists(os.path.dirname(src)):
-        dir = os.path.dirname(src)
-        log.notice("Folder %s doesn't exist, creating" % dir)
-        os.makedirs(dir)
-    f_util.copy_file(installed, src, update = False)
-    log.success()
+class stdRetrieveAction(Action):
+    """Retrieves an installed file"""
+
+    def apply(self, src, dst, *params):
+        log.debug("Retrieving %s from %s" % (dst, src))
+        if not os.path.exists(os.path.dirname(dst)):
+            dir = os.path.dirname(dst)
+            log.notice("Folder %s doesn't exist, creating" % dir)
+            os.makedirs(dir)
+        f_util.copy_file(src, dst, update = False)
+        return ActionResult(success = True)
 
 # {{{2 std_link
-def std_link(ln_name, target):
-    log.info("Linking %s to %s" % (ln_name, target), with_success = True)
-    os.symlink(target, ln_name)
-    log.success()
+class stdLinkAction(Action):
+    """Links dst to src"""
+
+    def apply(self, src, dst, *params):
+        log.comment("Linking %s to %s" % (dst, src))
+        os.symlink(src, dst)
+        return ActionResult(True)
 
 # {{{2 std_none
-def std_none(src, target):
-    log.info("Doing nothing for %s to %s" % (src, target))
+class stdEmptyAction(Action):
+    """Does nothing"""
+
+    def apply(self, src, dst, *params):
+        return ActionResult(True, "Nothing done for %s to %s" % (src, dst))
 
 # {{{2 std_diff
-def std_diff(src, dst):
-    diff = subprocess.Popen(["diff", "-Nur", src, dst], stdout=subprocess.PIPE).communicate()[0]
-    if len(diff) > 0:
-        log.display("vimdiff %s %s" % (src, dst))
-        [log.display(row) for row in diff.splitlines()]
-    else:
-        log.info("No changes for %s" % src)
+class stdDiffAction(Action):
+    """Computes the raw diff between src and dst"""
+
+    def apply(self, src, dst, *params):
+        diff = subprocess.Popen(["diff", "-Nur", src, dst], stdout=subprocess.PIPE).communicate()[0]
+        if len(diff) > 0:
+            log.display("vimdiff %s %s" % (src, dst))
+            [log.display(row) for row in diff.splitlines()]
+        return ActionResult(success = len(diff) == 0)
 
 # {{{2 std_check
-def std_check(src, dst, installed):
-    # Load compiled versions
-    with open(src, 'r') as f:
-        orig = [line for line in get_output(f)]
-    if not os.path.exists(dst):
-        log.display("File %s hasn't be compiled, please run 'build'" % dst)
-        return
+class stdCheckAction(Action):
+    """Verifies that all goes fine between src, dst, installed"""
 
-    with open(dst, 'r') as f:
-        dest = [line for line in f]
+    def apply(self, src, dst, *params):
+        if len(params) < 1:
+            log.crit("Error in the code: not enough parameters")
+            return ActionResult(success = False)
+        installed = params[0]
+        # Load compiled versions
+        with open(src, 'r') as f:
+            orig = [line for line in get_output(f)]
+        if not os.path.exists(dst):
+            return ActionResult(success = False, msg = "File %s hasn't be compiled, please run 'build'" % dst)
 
-    same = True
-    # Check whether they differ
-    md5_orig = getHash(orig)
-    md5_dest = getHash(dest)
-    if md5_orig != md5_dest:
-        log.display("Found diff between %s and compiled version %s." % (src, dst))
-        same = False
+        with open(dst, 'r') as f:
+            dest = [line for line in f]
 
-    log.fulldebug("Calling diff %s %s" % (dst, installed), "Actions/Check")
-    DEVNULL = open('/dev/null', 'w')
-    retcode = subprocess.call(["diff", dst, installed], stdout = DEVNULL, stderr = DEVNULL)
-    if retcode != 0:
-        log.display("Found diff between %s and installed version %s." % (dst, installed))
-        same = False
-    if same:
-        log.display("%s is up to date." % installed)
+        same = True
+        msgs = []
+        # Check whether they differ
+        md5_orig = getHash(orig)
+        md5_dest = getHash(dest)
+        if md5_orig != md5_dest:
+            msgs.append("Found diff between %s and compiled version %s." % (src, dst))
+            same = False
+
+        log.fulldebug("Calling diff %s %s" % (dst, installed), "Actions/Check")
+        DEVNULL = open('/dev/null', 'w')
+        retcode = subprocess.call(["diff", dst, installed], stdout = DEVNULL, stderr = DEVNULL)
+        if retcode != 0:
+            msgs.append("Found diff between %s and installed version %s." % (dst, installed))
+            same = False
+        if same:
+            return ActionResult(success = True)
+        else:
+            return ActionResult(success = False, msg = '; '.join(msgs))
 
 # {{{1 custom command callers
 # {{{2 call_cmd(cmd)
-def call_cmd(cmd):
-    """Returns a function f(x, y, z, ...) => subprocess.call(cmd + [x, y, z, ...])"""
-    fn = lambda *args : subprocess.call(cmd + [arg for arg in args])
-    return fn
+def callCmdAction(Action):
+    def __init__(self, cmd):
+        self.cmd = cmd
+
+    def apply(self, src, dst, *params):
+        res = subprocess.call(cmd + [src, dst] + [arg for arg in args])
+        return ActionResult(success = (res == 0))
 
 # {{{2 custom_preinstall
 def custom_preinstall(src, dst, cmd):
@@ -339,3 +449,22 @@ def custom_postinstall(src, dst, cmd):
         log.fail()
     else:
         log.success()
+
+# {{{1 Build list of available actions
+__actionsdir = dir()
+
+def getActionsList():
+    acts = dict()
+    for x in __actionsdir:
+        if len(x) > 6 and x[-6:] == 'Action':
+            acts[x.lower()] = x
+    return acts
+
+def actionExists(act):
+    return all.has_key(act)
+
+def actionName(act):
+    if actionExists(act):
+        return all[act.lower()]
+
+all = getActionsList()
