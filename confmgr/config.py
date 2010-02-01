@@ -143,6 +143,11 @@ class Config:
         """Returns options once cli values have been merged into it"""
         return options
 
+    # {{{2 getActionsOptions
+    def getActionsOptions(self, actionname):
+        """Returns options for a given action"""
+        return dict()
+
     # {{{2 finalize
     def finalize(self):
         if self.finalized:
@@ -161,7 +166,10 @@ class Config:
         # Read default cats
         if self.config.has_option("DEFAULT", "cats"):
             self.cats = set(self.config.get("DEFAULT", "cats").split())
-        hostname = subprocess.Popen(["hostname", "-s"], stdout=subprocess.PIPE).communicate()[0][:-1]
+        if self.config.has_option("DEFAULT", "hostname"):
+            hostname = self.config.get("DEFAULT", "hostname")
+        else:
+            hostname = subprocess.Popen(["hostname", "-s"], stdout=subprocess.PIPE).communicate()[0][:-1]
         self.cats = self.cats | set([hostname])
 
         # Read rules and apply them
