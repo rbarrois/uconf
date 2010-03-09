@@ -240,7 +240,7 @@ class FileRule:
         if not os.path.exists(src):
             log.warn("Trying to retrieve %s, not available in repo !!" % installed, "Rules/Retrieve")
         elif not os.path.exists(installed):
-            return log.showActionResult(ActionResult(success = False, msg = "Unable to retrieve non-existing file %s" % installed))
+            return log.showActionResult(actions.ActionResult(success = False, msg = "Unable to retrieve non-existing file %s" % installed))
         log.showActionResult(act.apply(installed, src))
 
     # {{{2 backport
