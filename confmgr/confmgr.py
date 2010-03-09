@@ -140,13 +140,14 @@ def do_init(root, install_root):
     conf = os.path.join(root, "config")
     if not os.path.exists(conf):
         skel = """[default]
-    install_root = %s
+install_root = %s
 
-    [cats]
-    %s = all
+[cats]
+%s = all
 
-    [files]
-    """ % (install_root, hostname)
+[files]
+
+""" % (install_root, hostname)
         with open(conf, 'w') as f:
             f.write(skel)
 
