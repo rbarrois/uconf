@@ -58,7 +58,7 @@ def parse_file(src):
             log.debug("Escaping row : %s" % row, "FileParser")
             yield (True, row[:2] + row[3:] + "\n", line)
         elif re_command.match(row) != None:
-            parts = row[2:].split(' ', 2)
+            parts = row[2:].split(' ', 1)
             command = parts[0]
             log.debug("Encountered command %s" % command, "FileParser")
             if command == "end" and in_block:
