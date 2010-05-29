@@ -18,7 +18,7 @@ def __checkCfg(findRoot = True):
             cfg.finalize()
     return cfg
 
-modules = ["init", "update", "build", "install", "diff", "check", "retrieve", "backport", "import" ]
+modules = ["init", "update", "build", "install", "diff", "check", "retrieve", "backport", "import", "export"]
 
 def printVersion():
     sys.stdout.write("""Confmgr %s
@@ -210,6 +210,32 @@ def cmd_import(opts, args):
     for file in args:
         do_import(file, folder=folder, cat=cat)
 
+# {{{2 cmd_export
+def __parse_export(args):
+    parser = __init_parser(cmd_export)
+    parser.add_option("-d", "--dir", action="store", dest="exportdir", default=None, help="Export files into EXPORTDIR")
+    return parser.parse_args(args)
+
+def cmd_export(opts, args):
+    """Export the repo for a given host
+
+    The export for host HOST will export into export-HOST a full built tree."""
+    cfg = __checkCfg()
+
+    if len(args) != 1:
+        log.crit("Error : you must give the name of exactly one host to export for")
+        sys.exit(1)
+
+    target_host = args[0]
+    exportdir = 'export-' + target_host
+    if opts.exportdir != None:
+        exportdir = opts.exportdir
+
+    cfg.setHost(target_host)
+    cfg.setDst(exportdir)
+    do_build([])
+
+
 # {{{2 cmd_build
 def __parse_build(args):
     """Parses args and returns (opts, args)"""
@@ -221,6 +247,10 @@ def cmd_build(opts, files):
 
     No options.
     Optionnally, a list of files to build can be given when calling."""
+    do_build(files)
+
+def do_build(files = []):
+    """Actually asks for building all files, or only those given as argument"""
     cfg = __checkCfg()
     known_files = cfg.filerules.keys()
 

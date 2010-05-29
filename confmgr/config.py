@@ -54,7 +54,7 @@ class Config:
         data.set('rules', 'def_install', "")
         return data
 
-    # {{{2 findRoot, setRoot, getRoot
+    # {{{2 findRoot, setRoot
     def findRoot(self):
         """Finds the root of the current repo"""
         path = os.getcwd()
@@ -105,6 +105,14 @@ class Config:
 
     def getDstSubdir(self):
         return self.config.get("DEFAULT", 'dstdir')
+
+    # {{{2 Setters
+    def setHost(self, hostname):
+        self.config.set("DEFAULT", 'hostname', hostname)
+        self.__reload()
+
+    def setDst(self, dstdir):
+        self.config.set("DEFAULT", 'dstdir', dstdir)
 
     # {{{2 readRepoConfig
     def readRepoConfig(self, configfile = None):
@@ -170,6 +178,10 @@ class Config:
         self.finalized = True
         if len(self.__cats) == 0 and len(self.__files) == 0:
             self.readRepoConfig()
+        self.__reload()
+
+    # {{{2 __reload
+    def __reload(self):
         self.__loadCats()
         self.__loadFiles()
         self.__loadRules()
@@ -181,6 +193,8 @@ class Config:
         # Read default cats
         if self.config.has_option("DEFAULT", "cats"):
             self.cats = set(self.config.get("DEFAULT", "cats").split())
+        else:
+            self.cats = set()
         if self.config.has_option("DEFAULT", "hostname"):
             hostname = self.config.get("DEFAULT", "hostname")
         else:
@@ -201,6 +215,7 @@ class Config:
         if len(self.cats) == 0:
             self.__loadCats()
         rules = []
+        self.files = set()
         for (pre, post) in self.__files:
             rules.append(FileExpandRule(pre, post))
         for rule in rules:
