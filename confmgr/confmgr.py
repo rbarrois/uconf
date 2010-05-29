@@ -85,7 +85,7 @@ def do_import(path, folder, cat="All"):
     cfg = config.getConfig()
     repo_root = cfg.getRoot()
     install_root = cfg.getInstallRoot()
-    src_path = os.path.join(repo_root, 'src')
+    src_path = cfg.getSrc()
     absfolder = os.path.join(src_path, folder)
 
     if not os.path.exists(absfolder):
@@ -197,10 +197,10 @@ def cmd_import(opts, args):
         log.crit("Error : The 'folder' argument is mandatory.")
         sys.exit(1)
     repo_root = cfg.getRoot()
-    src_path = os.path.join(repo_root, 'src')
+    src_path = cfg.getSrc()
     folder = os.path.normpath(opts.folder)
 
-    if not misc.isSubdir(folder, os.path.join(repo_root, 'src')):
+    if not misc.isSubdir(folder, cfg.getSrc()):
         log.crit("Error : the target folder must be within the 'src' folder of repo (given : %s)" % folder)
         sys.exit(1)
     folder = os.path.relpath(os.path.join(src_path, folder), src_path)
@@ -230,7 +230,7 @@ def cmd_build(opts, files):
         for file in files:
             if file not in cfg.files:
                 parts = file.split('/')
-                if (parts[0] == 'src' or parts[0] == 'dst') and '/'.join(parts[1:]) in cfg.files:
+                if (parts[0] == cfg.getSrcSubdir() or parts[0] == cfg.getDstSubdir()) and '/'.join(parts[1:]) in cfg.files:
                     _files.append('/'.join(parts[1:]))
                 else:
                     log.warn("No configuration for file %s, ignoring." % file)

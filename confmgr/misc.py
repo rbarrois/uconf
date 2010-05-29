@@ -123,8 +123,7 @@ class FileRule:
         if not self.options.has_key("def_build") or self.options['def_build'] in ('', 'def_build'):
             log.debug("Applying def_build to %s." % self.file, "Rules/Build")
             cfg = config.getConfig()
-            root = cfg.getRoot()
-            src = os.path.join(root, 'src', self.file)
+            src = os.path.join(cfg.getSrc(), self.file)
             return actions.def_build(src)
         else:
             act = self.options['def_build']
@@ -138,9 +137,8 @@ class FileRule:
     def build(self):
         cfg = config.getConfig()
         # TODO : check 'config' timestamp as well
-        root = cfg.getRoot()
-        src = os.path.join(root, 'src', self.file)
-        dst = os.path.join(root, 'dst', self.file)
+        src = os.path.join(cfg.getSrc(), self.file)
+        dst = os.path.join(cfg.getDst(), self.file)
         act = self._buildAction()
         if not os.path.exists(src):
             log.crit("Source for %s doesn't exist." % src, "Rules/Build")
@@ -165,8 +163,7 @@ class FileRule:
         if not self.options.has_key("def_install") or self.options['def_install'] in ('', 'def_install'):
             log.debug("Applying def_install to %s." % self.file, "Rules/Install")
             cfg = config.getConfig()
-            root = cfg.getRoot()
-            src = os.path.join(root, 'dst', self.file)
+            src = os.path.join(cfg.getDst(), self.file)
             return actions.def_install(src)
         else:
             act = self.options['def_install']
@@ -179,9 +176,8 @@ class FileRule:
 
     def install(self):
         cfg = config.getConfig()
-        root = cfg.getRoot()
         install_root = cfg.getInstallRoot()
-        src = os.path.join(root, 'dst', self.file)
+        src = os.path.join(cfg.getDst(), self.file)
         dst = os.path.join(install_root, self.target)
         src_time = getTime(src)
         act = self._installAction()
@@ -216,9 +212,8 @@ class FileRule:
             cfg = config.getConfig()
             install_root = cfg.getInstallRoot()
             installed = os.path.join(install_root, self.target)
-            root = cfg.getRoot()
-            src = os.path.join(root, 'src', self.file)
-            dst = os.path.join(root, 'dst', self.file)
+            src = os.path.join(cfg.getSrc(), self.file)
+            dst = os.path.join(cfg.getDst(), self.file)
             return actions.def_retrieve(installed, src, dst)
         else:
             act = self.options['def_retrieve']
@@ -231,10 +226,9 @@ class FileRule:
 
     def retrieve(self):
         cfg = config.getConfig()
-        root = cfg.getRoot()
         install_root = cfg.getInstallRoot()
         installed = os.path.join(install_root, self.target)
-        src = os.path.join(root, 'dst', self.file)
+        src = os.path.join(cfg.getDst(), self.file)
         act = self._retrieveAction()
         log.info("Retrieving %s" % self.file, with_success = True)
         if not os.path.exists(src):
@@ -248,9 +242,8 @@ class FileRule:
         if not self.options.has_key("def_backport") or self.options['def_backport'] in ('', 'def_backport'):
             log.debug("Applying def_backport to %s." % self.file, "Rules/Backport")
             cfg = config.getConfig()
-            root = cfg.getRoot()
-            dst = os.path.join(root, 'dst', self.file)
-            src = os.path.join(root, 'src', self.file)
+            dst = os.path.join(cfg.getDst(), self.file)
+            src = os.path.join(cfg.getSrc(), self.file)
             return actions.def_backport(dst, src)
         else:
             act = self.options['def_backport']
@@ -263,9 +256,8 @@ class FileRule:
 
     def backport(self):
         cfg = config.getConfig()
-        root = cfg.getRoot()
-        src = os.path.join(root, 'src', self.file)
-        dst = os.path.join(root, 'dst', self.file)
+        src = os.path.join(cfg.getSrc(), self.file)
+        dst = os.path.join(cfg.getDst(), self.file)
         act = self._backportAction()
         log.info("Backporting %s" % self.file, with_success = True)
         if not os.path.exists(src):
@@ -295,9 +287,8 @@ class FileRule:
 
     def diff(self):
         cfg = config.getConfig()
-        root = cfg.getRoot()
         install_root = cfg.getInstallRoot()
-        src = os.path.join(root, 'dst', self.file)
+        src = os.path.join(cfg.getDst(), self.file)
         dst = os.path.join(install_root, self.target)
         if not os.path.exists(src):
             log.warn("Trying to find diffs for %s, which doesn't exist !" % self.file, "Rules/Diff")
@@ -324,10 +315,9 @@ class FileRule:
 
     def check(self):
         cfg = config.getConfig()
-        root = cfg.getRoot()
         install_root = cfg.getInstallRoot()
-        src = os.path.join(root, 'src', self.file)
-        dst = os.path.join(root, 'dst', self.file)
+        src = os.path.join(cfg.getSrc(), self.file)
+        dst = os.path.join(cfg.getDst(), self.file)
         installed = os.path.join(install_root, self.target)
         if not os.path.exists(src):
             log.warn("Source file %s is missing !!" % src, "Rules/Check")

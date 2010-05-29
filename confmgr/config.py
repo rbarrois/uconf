@@ -44,6 +44,8 @@ class Config:
         # Put all default config here
         default = dict()
         default['root'] = os.path.expanduser("~/conf")
+        default['srcdir'] = 'src'
+        default['dstdir'] = 'dst'
         data = ConfigParser.SafeConfigParser(default)
         data.add_section('rules')
         data.set('rules', 'preinstall', "")
@@ -85,11 +87,24 @@ class Config:
         if os.path.exists(root + "/config") and os.access(root + "/config", os.R_OK):
             self.readRepoConfig(root + "/config")
 
+    # {{{2 Access to paths (getRoot, getInstallRoot, getSrc, getDst)
     def getRoot(self):
         return os.path.expanduser(self.config.get("DEFAULT", "root"))
 
     def getInstallRoot(self):
         return os.path.expanduser(self.config.get("DEFAULT", "install_root"))
+
+    def getSrc(self):
+        return os.path.join(self.getRoot(), self.config.get("DEFAULT", "srcdir"))
+
+    def getSrcSubdir(self):
+        return self.config.get("DEFAULT", 'srcdir')
+
+    def getDst(self):
+        return os.path.join(self.getRoot(), self.config.get("DEFAULT", "dstdir"))
+
+    def getDstSubdir(self):
+        return self.config.get("DEFAULT", 'dstdir')
 
     # {{{2 readRepoConfig
     def readRepoConfig(self, configfile = None):
