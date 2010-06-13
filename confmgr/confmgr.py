@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys, os, optparse, subprocess, shutil
+from abc import ABCMeta, abstractmethod
 
 # local imports
 import log, config, actions, misc
@@ -9,58 +10,36 @@ import log, config, actions, misc
 #version = @@VERSION@@
 version = '@VERSION@'
 
-# {{{1 __checkCfg
-def __checkCfg(findRoot = True):
-    cfg = config.getConfig()
-    if findRoot:
-        cfg.setRoot(cfg.findRoot())
-        if not cfg.finalized:
-            cfg.finalize()
-    return cfg
-
-modules = ["init", "update", "build", "install", "diff", "check", "retrieve", "backport", "import", "export"]
-
 def printVersion():
     sys.stdout.write("""Confmgr %s
 Copyright (C) 2009 XelNet
 
 Written by Raphaël Barrois (Xelnor).\n""" % version)
 
-def __init_parser(mth):
-    parser = optparse.OptionParser(mth.__doc__, add_help_option = False)
-    # Verbosity
-    parser.set_defaults(verbosity = 0)
-    parser.set_defaults(quietness = 0)
-    parser.add_option("-h", "--help", action="help", help=optparse.SUPPRESS_HELP)
-    parser.add_option("-v", "--verbose", action="count", dest="verbosity", help=optparse.SUPPRESS_HELP)
-    parser.add_option("-q", "--quiet", action="count", dest="quietness", help=optparse.SUPPRESS_HELP)
-    return parser
-
-def __set_verb(opts):
-    log.setLogLevel(log.getLogLevelFromVerbosity(opts.verbosity - opts.quietness))
-
 # {{{1 __getMethods
-def __getMethods(dir):
-    """Lists methods implemented in current code"""
-    res = []
+def __loadCommands(dir):
+    """Lists commands implemented in current code"""
+    res = dict()
     for item in dir:
-        if item[:4] == "cmd_":
-            res.append(item)
+        if item[:3] == "cmd":
+            cmd = item[3:].lower()
+            res[cmd] = eval(item)
+    log.fulldebug("Available commands are : {0}".format(repr(res)), "Core")
     return res
 
-# {{{1 __getMethod
-def __getMethod(command):
-    cmd = "cmd_" + command
-    if cmd in __methods:
-        return eval(cmd)
+# {{{1 __getCommand
+def __getCommand(command):
+    if command in __commands.keys():
+        return __commands[command]
     else:
         log.crit("Unknown command %s." % command, "Core")
         exit(1)
 
 # {{{1 getHelp
 def getHelp(cmd):
-    cmd = __getMethod(cmd).__name__
-    doc = eval(cmd + '.__doc__')
+    """Returns the docstring of the command cmd"""
+    cmd = __getCommand(cmd)
+    doc = cmd.getHelp()
     if doc == None:
         return ""
     else:
@@ -69,299 +48,349 @@ def getHelp(cmd):
 # {{{1 call
 def call(command, args):
     """Wrapper to confmgr.command(args)"""
-    __checkCfg(False)
-    mth = __getMethod(command)
-    parser = eval('__parse_' + command)
-    log.fulldebug("Found command %s" % command, "Caller")
-    opts = None
-    arg = None
-    if parser != None:
-        (opts, args) = parser(args)
-    __set_verb(opts)
-    return mth(opts, args)
-
-# {{{1 do_import
-def do_import(path, folder, cat="All"):
-    cfg = config.getConfig()
-    repo_root = cfg.getRoot()
-    install_root = cfg.getInstallRoot()
-    src_path = cfg.getSrc()
-    absfolder = os.path.join(src_path, folder)
-
-    if not os.path.exists(absfolder):
-        log.notice("Creating the %s folder" % absfolder)
-        os.makedirs(absfolder)
-
-    if not os.path.isdir(absfolder):
-        log.crit("Unable to create %s, skipping file." % absfolder)
-
-    pathfile = os.path.join(absfolder, '__paths')
-    files = []
-
-    abspath = os.path.abspath(path)
-    is_folder = (os.path.basename(path) == '' or os.path.isdir(abspath))
-    if is_folder:
-        # Folder
-        log.debug("Importing folder %s" % abspath, module="Import")
-        if not os.path.exists(abspath):
-            log.warn("Folder %s doesn't exist, skipping." % abspath)
-            return
-        fnd = subprocess.Popen(["find", abspath, "-type", "f"], stdout = subprocess.PIPE).communicate()[0]
-        for row in fnd.split():
-            files.append((os.path.relpath(row, abspath), row))
-    else:
-        # Regular file
-        log.debug("Importing file %s" % abspath, module="Import")
-        if not os.path.exists(abspath):
-            log.warn("File %s doesn't exist, I won't copy it into the 'src' folder." % abspath)
-        files = [(os.path.basename(path), abspath)]
-
-    files.sort()
-    # Handle files
-    with open(pathfile, 'a') as f:
-        for (file, install_file) in files:
-            relp = os.path.relpath(install_file, install_root)
-            log.info("Adding file %s" % file, module="Import")
-            f.write("%s %s\n" % (file, relp))
-            if os.path.exists(install_file):
-                dirname = os.path.dirname(file)
-                absdirname = os.path.join(absfolder, dirname)
-                if dirname != '' and dirname != '.' and not os.path.exists(absdirname):
-                    os.makedirs(absdirname)
-                shutil.copy(install_file, os.path.join(absfolder, file))
-    with open(os.path.join(repo_root, "config"), 'a') as g:
-        g.write("%s: %s\n" % (cat, ' '.join([os.path.join(folder,file) for (file, install_file) in files])))
-
-# {{{1 do_init
-def do_init(root, install_root):
-    """Initializes a repo in 'root' with the given 'install_root'"""
-    hostname = subprocess.Popen(["hostname", "-s"], stdout=subprocess.PIPE).communicate()[0][:-1]
-
-    conf = os.path.join(root, "config")
-    if not os.path.exists(conf):
-        skel = """[default]
-install_root = %s
-
-[cats]
-%s = all
-
-[files]
-
-""" % (install_root, hostname)
-        with open(conf, 'w') as f:
-            f.write(skel)
-
-    mkdirs = [os.path.join(root, dir) for dir in ['src', 'dst']]
-    for mkdir in mkdirs:
-        if not os.path.exists(mkdir):
-            os.mkdir(mkdir)
+    Command._getCfg(False)
+    cmdclass = __getCommand(command)
+    log.fulldebug("Found command %s" % cmdclass.__name__, "Caller")
+    cmd = cmdclass(args)
+    return cmd.apply()
 
 # {{{1 commands
 
-# {{{2 cmd_init
-def __parse_init(args):
-    """Parses args and returns (opts, args)"""
-    parser = __init_parser(cmd_init)
-    parser.add_option("-i", "--install-path", action="store", dest="install_root", default="", help="Path for installed files")
-    return parser.parse_args(args)
+# {{{2 Command (Base class for commands)
+class Command(object):
+    """The class for a given command"""
+    # Put the doc for the command in its doc string
 
-def cmd_init(opts, args):
-    """Initialize a confmgr repo here"""
-    cfg = __checkCfg(False)
-    cfg.setRoot(os.getcwd())
-    do_init(cfg.getRoot(), opts.install_root)
+    __metaclass__ = ABCMeta
 
-# {{{2 cmd_update
-def __parse_update(args):
-    """Parses args and returns (opts, args)"""
-    parser = __init_parser(cmd_update)
-    return parser.parse_args(args)
+    def __init__(self, args):
+        (self.opts, self.args) = self.__class__.__parse(args)
 
-def cmd_update(opts, args):
+    @staticmethod
+    def _getCfg(findRoot = True):
+        """Loads the config, trying to find the correct repo root"""
+        cfg = config.getConfig()
+        if findRoot:
+            cfg.setRoot(cfg.findRoot())
+            if not cfg.finalized:
+                cfg.finalize()
+        return cfg
+
+    @classmethod
+    def getHelp(cls):
+        """Method used to return help message
+
+        Can be overriden in subclasses"""
+        return cls.__doc__
+
+    @classmethod
+    def __init_parser(cls):
+        """Prepare the options parser for current class
+        Should not be overriden in subclasses, use _add_options to add options"""
+        parser = optparse.OptionParser(cls.getHelp(), add_help_option = False)
+        # Verbosity
+        parser.set_defaults(verbosity = 0)
+        parser.set_defaults(quietness = 0)
+        parser.add_option("-h", "--help", action="help", help=optparse.SUPPRESS_HELP)
+        parser.add_option("-v", "--verbose", action="count", dest="verbosity", help=optparse.SUPPRESS_HELP)
+        parser.add_option("-q", "--quiet", action="count", dest="quietness", help=optparse.SUPPRESS_HELP)
+        return parser
+
+    @classmethod
+    def _add_options(cls, parser):
+        """Method to use in subclasses for adding options to the parser
+        (already loaded with default help and verbosity options)"""
+        return
+
+    @classmethod
+    def __parse(cls, args):
+        """Prepare the parser, and load options from args"""
+        parser = cls.__init_parser()
+        cls._add_options(parser)
+        (opts, args) = parser.parse_args(args)
+        log.setLogLevel(log.getLogLevelFromVerbosity(opts.verbosity - opts.quietness))
+        return (opts, args)
+
+
+    @abstractmethod
+    def apply(self):
+        """Method which should be overriden for each command"""
+        pass
+
+# {{{2 cmdInit
+class cmdInit(Command):
+    """Initialize a confmgr repo in the current directory"""
+
+    @classmethod
+    def _add_options(cls, parser):
+        parser.add_option("-i", "--install-path", action="store", dest="install_root", default="", help="Path for installed files")
+
+    def apply(self):
+        cfg = self._getCfg(False)
+        cfg.setRoot(os.getcwd())
+        self.init(cfg.getRoot(), self.opts.install_root)
+
+    @classmethod
+    def init(cls, root, install_root, srcdir = None, dstdir = None):
+        """Initializes a repo in 'root' with the given 'install_root'"""
+        cfg = cls._getCfg(False)
+        if srcdir is None:
+            srcdir = cfg.getSrcSubdir()
+        if dstdir is None:
+            dstdir = cfg.getDstSubdir()
+
+        hostname = subprocess.Popen(["hostname", "-s"], stdout=subprocess.PIPE).communicate()[0][:-1]
+
+        conf = os.path.join(root, "config")
+        if not os.path.exists(conf):
+            skel = """[default]
+install_root = {i}
+
+[cats]
+{h} = all
+
+[files]
+
+""".format(i = install_root, h = hostname)
+            with open(conf, 'w') as f:
+                f.write(skel)
+
+        mkdirs = [os.path.join(root, dir) for dir in [srcdir, dstdir]]
+        for mkdir in mkdirs:
+            if not os.path.exists(mkdir):
+                os.mkdir(mkdir)
+
+# {{{2 cmdUpdate
+class cmdUpdate(Command):
     """Update repo (through an update of the VCS)"""
-    cfg = __checkCfg()
 
-# {{{2 cmd_import
-def __parse_import(args):
-    """Parses args and returns (opts, args)"""
-    parser = __init_parser(cmd_import)
-    parser.add_option("-c", "--category", action="store", dest="cat", default="all", help="Put the files into category CAT")
-    parser.add_option("-f", "--folder", action="store", dest="folder", default=None, help="Import files into FOLDER (FOLDER is taken relative to the 'src' folder of the repo)")
-    return parser.parse_args(args)
+    def apply(self):
+        log.display("Not implemented yet.")
 
-def cmd_import(opts, args):
+# {{{2 cmdImport
+class cmdImport(Command):
     """Import a folder into the repo"""
-    cfg = __checkCfg()
 
-    if opts.folder == None:
-        log.crit("Error : The 'folder' argument is mandatory.")
-        sys.exit(1)
-    repo_root = cfg.getRoot()
-    src_path = cfg.getSrc()
-    folder = os.path.normpath(opts.folder)
+    @classmethod
+    def _add_options(cls, parser):
+        parser.add_option("-c", "--category", action="store", dest="cat", default="all", help="Put the files into category CAT")
+        parser.add_option("-f", "--folder", action="store", dest="folder", default=None, help="Import files into FOLDER (FOLDER is taken relative to the 'src' folder of the repo)")
 
-    if not misc.isSubdir(folder, cfg.getSrc()):
-        log.crit("Error : the target folder must be within the 'src' folder of repo (given : %s)" % folder)
-        sys.exit(1)
-    folder = os.path.relpath(os.path.join(src_path, folder), src_path)
-    log.info("Adding files to the %s folder (%s)" % (folder, os.path.join(src_path, folder)))
+    def apply(self):
+        cfg = self._getCfg()
 
-    cat = opts.cat
-    for file in args:
-        do_import(file, folder=folder, cat=cat)
+        if self.opts.folder == None:
+            log.crit("Error : The 'folder' argument is mandatory.")
+            sys.exit(1)
+        repo_root = cfg.getRoot()
+        src_path = cfg.getSrc()
+        folder = os.path.normpath(self.opts.folder)
 
-# {{{2 cmd_export
-def __parse_export(args):
-    parser = __init_parser(cmd_export)
-    parser.add_option("-d", "--dir", action="store", dest="exportdir", default=None, help="Export files into EXPORTDIR")
-    return parser.parse_args(args)
+        if not misc.isSubdir(folder, cfg.getSrc()):
+            log.crit("Error : the target folder must be within the '{0}' folder of repo (given : {1})".format(cfg.getSrcSubdir(), folder))
+            sys.exit(1)
+        folder = os.path.relpath(os.path.join(src_path, folder), src_path)
+        log.info("Adding files to the %s folder (%s)" % (folder, os.path.join(src_path, folder)))
 
-def cmd_export(opts, args):
+        cat = self.opts.cat
+        for file in self.args:
+            log.fulldebug(repr(folder))
+            self.importFile(file, folder=folder, cat=cat)
+
+    @classmethod
+    def importFile(cls, path, folder, cat="All"):
+        cfg = config.getConfig()
+        repo_root = cfg.getRoot()
+        install_root = cfg.getInstallRoot()
+        src_path = cfg.getSrc()
+        absfolder = os.path.join(src_path, folder)
+
+        if not os.path.exists(absfolder):
+            log.notice("Creating the %s folder" % absfolder)
+            os.makedirs(absfolder)
+
+        if not os.path.isdir(absfolder):
+            log.crit("Unable to create %s, skipping file." % absfolder)
+
+        pathfile = os.path.join(absfolder, '__paths')
+        files = []
+
+        abspath = os.path.abspath(path)
+        is_folder = (os.path.basename(path) == '' or os.path.isdir(abspath))
+        if is_folder:
+            # Folder
+            log.debug("Importing folder %s" % abspath, module="Import")
+            if not os.path.exists(abspath):
+                log.warn("Folder %s doesn't exist, skipping." % abspath)
+                return
+            fnd = subprocess.Popen(["find", abspath, "-type", "f"], stdout = subprocess.PIPE).communicate()[0]
+            for row in fnd.split():
+                files.append((os.path.relpath(row, abspath), row))
+        else:
+            # Regular file
+            log.debug("Importing file %s" % abspath, module="Import")
+            if not os.path.exists(abspath):
+                log.warn("File %s doesn't exist, I won't copy it into the 'src' folder." % abspath)
+            files = [(os.path.basename(path), abspath)]
+
+        files.sort()
+        # Handle files
+        with open(pathfile, 'a') as f:
+            for (file, install_file) in files:
+                relp = os.path.relpath(install_file, install_root)
+                log.info("Adding file %s" % file, module="Import")
+                f.write("%s %s\n" % (file, relp))
+                if os.path.exists(install_file):
+                    dirname = os.path.dirname(file)
+                    absdirname = os.path.join(absfolder, dirname)
+                    if dirname != '' and dirname != '.' and not os.path.exists(absdirname):
+                        os.makedirs(absdirname)
+                    shutil.copy(install_file, os.path.join(absfolder, file))
+        with open(os.path.join(repo_root, "config"), 'a') as g:
+            g.write("%s: %s\n" % (cat, ' '.join([os.path.join(folder,file) for (file, install_file) in files])))
+
+# {{{2 cmdExport
+class cmdExport(Command):
     """Export the repo for a given host
 
     The export for host HOST will export into export-HOST a full built tree."""
-    cfg = __checkCfg()
 
-    if len(args) != 1:
-        log.crit("Error : you must give the name of exactly one host to export for")
-        sys.exit(1)
+    @classmethod
+    def _add_options(cls, parser):
+        parser.add_option("-d", "--dir", action="store", dest="exportdir", default=None, help="Export files into EXPORTDIR")
 
-    target_host = args[0]
-    exportdir = 'export-' + target_host
-    if opts.exportdir != None:
-        exportdir = opts.exportdir
+    def apply(self):
+        cfg = self._getCfg()
 
-    cfg.setHost(target_host)
-    cfg.setDst(exportdir)
-    do_build([])
+        if len(self.args) != 1:
+            log.crit("Error : you must give the name of exactly one host to export for")
+            sys.exit(1)
 
+        target_host = self.args[0]
+        exportdir = 'export-' + target_host
+        if opts.exportdir != None:
+            exportdir = opts.exportdir
 
-# {{{2 cmd_build
-def __parse_build(args):
-    """Parses args and returns (opts, args)"""
-    parser = __init_parser(cmd_build)
-    return parser.parse_args(args)
+        cfg.setHost(target_host)
+        cfg.setDst(exportdir)
+        cmdBuild.build([])
 
-def cmd_build(opts, files):
+# {{{2 cmdBuild
+class cmdBuild(Command):
     """Build all files needed for this host
 
     No options.
     Optionnally, a list of files to build can be given when calling."""
-    do_build(files)
 
-def do_build(files = []):
-    """Actually asks for building all files, or only those given as argument"""
-    cfg = __checkCfg()
-    known_files = cfg.filerules.keys()
+    def apply(self):
+        self.build(self.args)
 
-    # Load files given as arguments
-    _files = []
-    if len(files) > 0:
-        for file in files:
-            if file not in cfg.files:
-                parts = file.split('/')
-                if (parts[0] == cfg.getSrcSubdir() or parts[0] == cfg.getDstSubdir()) and '/'.join(parts[1:]) in cfg.files:
-                    _files.append('/'.join(parts[1:]))
+    @classmethod
+    def build(cls, files = []):
+        """Actually asks for building all files, or only those given as argument"""
+        cfg = self._getCfg()
+        known_files = cfg.filerules.keys()
+
+        # Load files given as arguments
+        _files = []
+        if len(files) > 0:
+            for file in files:
+                if file not in cfg.files:
+                    parts = file.split('/')
+                    if (parts[0] == cfg.getSrcSubdir() or parts[0] == cfg.getDstSubdir()) and '/'.join(parts[1:]) in cfg.files:
+                        _files.append('/'.join(parts[1:]))
+                    else:
+                        log.warn("No configuration for file %s, ignoring." % file)
                 else:
-                    log.warn("No configuration for file %s, ignoring." % file)
+                    _files.append(file)
+        else:
+            _files = cfg.files
+
+        for file in _files:
+            if file not in known_files:
+                log.warn("No rules given for file %s, ignoring." % file)
             else:
-                _files.append(file)
-    else:
-        _files = cfg.files
+                rule = cfg.filerules[file]
+                rule.build()
 
-    for file in _files:
-        if file not in known_files:
-            log.warn("No rules given for file %s, ignoring." % file)
-        else:
-            rule = cfg.filerules[file]
-            rule.build()
-
-# {{{2 cmd_install
-def __parse_install(args):
-    """Parses args and returns (opts, args)"""
-    parser = __init_parser(cmd_install)
-    parser.add_option("-f", "--force", action="store_true", dest="force", help="Force install")
-    return parser.parse_args(args)
-
-def cmd_install(opts, args):
+# {{{2 cmdInstall
+class cmdInstall(Command):
     """Install all built files to their targets"""
-    cfg = __checkCfg()
-    known_files = cfg.filerules.keys()
-    for file in cfg.files:
-        if file not in known_files:
-            log.warn("No rules given for file %s, ignoring." % file)
-        else:
-            rule = cfg.filerules[file]
-            rule.install()
 
-# {{{2 cmd_check
-def __parse_check(args):
-    """Parses args and returns (opts, args)"""
-    parser = __init_parser(cmd_check)
-    return parser.parse_args(args)
+    @classmethod
+    def _add_options(cls, parser):
+        parser.add_option("-f", "--force", action="store_true", dest="force", help="Force install")
 
-def cmd_check(opts, args):
-    """Outputs list of files where there are diffs :
+    def apply(self):
+        cfg = self._getCfg()
+        known_files = cfg.filerules.keys()
+        for file in cfg.files:
+            if file not in known_files:
+                log.warn("No rules given for file %s, ignoring." % file)
+            else:
+                rule = cfg.filerules[file]
+                rule.install()
+
+# {{{2 cmdCheck
+class cmdCheck(Command):
+    """Outputs list of files where there are diffs
+
     - Between source and compiled
     - Between compiled and installed"""
-    cfg = __checkCfg()
-    known_files = cfg.filerules.keys()
-    for file in cfg.files:
-        if file not in known_files:
-            log.warn("No rules given for file %s, ignoring." % file)
-        else:
-            rule = cfg.filerules[file]
-            rule.check()
 
-# {{{2 cmd_retrieve
-def __parse_retrieve(args):
-    """Parses args and returns (opts, args)"""
-    parser = __init_parser(cmd_retrieve)
-    return parser.parse_args(args)
+    def apply(self):
+        cfg = self._getCfg()
+        known_files = cfg.filerules.keys()
+        for file in cfg.files:
+            if file not in known_files:
+                log.warn("No rules given for file %s, ignoring." % file)
+            else:
+                rule = cfg.filerules[file]
+                rule.check()
 
-def cmd_retrieve(opts, args):
+# {{{2 cmdRetrieve
+class cmdRetrieve(Command):
     """Retrive installed files"""
-    cfg = __checkCfg()
-    known_files = cfg.filerules.keys()
-    for file in cfg.files:
-        if file not in known_files:
-            log.warn("No rules given for file %s, ignoring." % file)
-        else:
-            rule = cfg.filerules[file]
-            rule.retrieve()
 
-# {{{2 cmd_backport
-def __parse_backport(args):
-    """Parses args and returns (opts, args)"""
-    parser = __init_parser(cmd_backport)
-    return parser.parse_args(args)
+    def apply(self):
+        cfg = self._getCfg()
+        known_files = cfg.filerules.keys()
+        for file in cfg.files:
+            if file not in known_files:
+                log.warn("No rules given for file %s, ignoring." % file)
+            else:
+                rule = cfg.filerules[file]
+                rule.retrieve()
 
-def cmd_backport(opts, args):
+# {{{2 cmdBackport
+class cmdBackport(Command):
     """Backport modifications of retrieved files to their source versions"""
-    cfg = __checkCfg()
-    known_files = cfg.filerules.keys()
-    for file in cfg.files:
-        if file not in known_files:
-            log.warn("No rules given for file %s, ignoring." % file)
-        else:
-            rule = cfg.filerules[file]
-            rule.backport()
 
-# {{{2 cmd_diff
-def __parse_diff(args):
-    """Parses args and returns (opts, args)"""
-    parser = __init_parser(cmd_diff)
-    return parser.parse_args(args)
+    def apply(self):
+        cfg = self._getCfg()
+        known_files = cfg.filerules.keys()
+        for file in cfg.files:
+            if file not in known_files:
+                log.warn("No rules given for file %s, ignoring." % file)
+            else:
+                rule = cfg.filerules[file]
+                rule.backport()
 
-def cmd_diff(opts, args):
+# {{{2 cmdDiff
+class cmdDiff(Command):
     """Print diff between compiled files and installed versions."""
-    cfg = __checkCfg()
-    known_files = cfg.filerules.keys()
-    for file in cfg.files:
-        if file not in known_files:
-            log.warn("No rules given for file %s, ignoring." % file)
-        else:
-            rule = cfg.filerules[file]
-            rule.diff()
 
-__methods = __getMethods(dir())
+    def apply(self):
+        cfg = self._getCfg()
+        known_files = cfg.filerules.keys()
+        for file in cfg.files:
+            if file not in known_files:
+                log.warn("No rules given for file %s, ignoring." % file)
+            else:
+                rule = cfg.filerules[file]
+                rule.diff()
+
+# {{{1 Global command initialization
+__commands = __loadCommands(dir())
+modules = __commands.keys()
+
