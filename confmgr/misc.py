@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
 
 # Global imports
@@ -105,7 +105,7 @@ def parseOptions(options, def_options, file = ""):
     return opts
 
 # {{{1 class FileRule
-class FileRule:
+class FileRule(object):
     def __init__(self, file, target, options = ''):
         self.file = file
         self.target = target
@@ -120,7 +120,7 @@ class FileRule:
 
     # {{{2 Build
     def _buildAction(self):
-        if not self.options.has_key("def_build") or self.options['def_build'] in ('', 'def_build'):
+        if 'def_build' not in self.options or self.options['def_build'] in ('', 'def_build'):
             log.debug("Applying def_build to %s." % self.file, "Rules/Build")
             cfg = config.getConfig()
             src = os.path.join(cfg.getSrc(), self.file)
@@ -160,7 +160,7 @@ class FileRule:
 
     # {{{2 Install
     def _installAction(self):
-        if not self.options.has_key("def_install") or self.options['def_install'] in ('', 'def_install'):
+        if 'def_install' not in self.options or self.options['def_install'] in ('', 'def_install'):
             log.debug("Applying def_install to %s." % self.file, "Rules/Install")
             cfg = config.getConfig()
             src = os.path.join(cfg.getDst(), self.file)
@@ -194,20 +194,20 @@ class FileRule:
 
     # {{{3 pre/post install actions
     def _preinstall(self, src, dst):
-        if not self.options.has_key('preinstall') or self.options['preinstall'] == '':
+        if 'preinstall' not in self.options or self.options['preinstall'] == '':
             return
         cmd = self.options['preinstall']
         actions.custom_preinstall(src, dst, cmd)
 
     def _postinstall(self, src, dst):
-        if not self.options.has_key('postinstall') or self.options['preinstall'] == '':
+        if 'postinstall' not in self.options or self.options['preinstall'] == '':
             return
         cmd = self.options['postinstall']
         actions.custom_postinstall(src, dst, cmd)
 
     # {{{2 retrieve
     def _retrieveAction(self):
-        if not self.options.has_key("def_retrieve") or self.options['def_retrieve'] in ('', 'def_retrieve'):
+        if 'def_retrieve' not in self.options or self.options['def_retrieve'] in ('', 'def_retrieve'):
             log.debug("Applying def_retrieve to %s." % self.file, "Rules/Retrieve")
             cfg = config.getConfig()
             install_root = cfg.getInstallRoot()
@@ -239,7 +239,7 @@ class FileRule:
 
     # {{{2 backport
     def _backportAction(self):
-        if not self.options.has_key("def_backport") or self.options['def_backport'] in ('', 'def_backport'):
+        if 'def_backport' not in self.options or self.options['def_backport'] in ('', 'def_backport'):
             log.debug("Applying def_backport to %s." % self.file, "Rules/Backport")
             cfg = config.getConfig()
             dst = os.path.join(cfg.getDst(), self.file)
@@ -273,7 +273,7 @@ class FileRule:
 
     # {{{2 diff
     def _diffAction(self):
-        if not self.options.has_key("def_diff") or self.options['def_diff'] in ('', 'def_diff'):
+        if 'def_diff' not in self.options or self.options['def_diff'] in ('', 'def_diff'):
             log.debug("Applying def_diff to %s." % self.file, "Rules/Diff")
             return actions.def_diff()
         else:
@@ -301,7 +301,7 @@ class FileRule:
     # {{{2 check
     def _checkAction(self):
         """Returns the action for checking : generally def_check"""
-        if not self.options.has_key("def_check") or self.options['def_check'] in ('', 'def_check'):
+        if 'def_check' not in self.options or self.options['def_check'] in ('', 'def_check'):
             log.debug("Applying def_check to %s." % self.file, "Rules/Check")
             return actions.def_check()
         else:
@@ -410,7 +410,7 @@ def parse_cplx_pre(pre):
     return CplxApplier(rule = parts)
 
 # {{{1 class CplxApplier
-class CplxApplier:
+class CplxApplier(object):
     """Holds what is needed to apply a complex rule"""
     def __init__(self, rule):
         self.rule = rule

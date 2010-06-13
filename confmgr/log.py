@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
 
 import sys,commands,os
@@ -30,7 +30,7 @@ def setInitialLogLevel():
     setLogLevel(getLogLevelFromVerbosity(verb))
 
 # Class holding current log level
-class LogLevelHolder:
+class LogLevelHolder(object):
     logLevel = INFO
     success_level = INFO
     with_success = False
@@ -100,7 +100,7 @@ __module_colors[WARN]       = "yellow"
 __module_colors[CRIT]       = "red"
 
 def __colorize(code, txt):
-    if LogLevelHolder.have_color and code in __colors.keys():
+    if LogLevelHolder.have_color and code in __colors:
         return __colors[code] + txt + __colors["reset"]
     else:
         return txt
@@ -146,7 +146,7 @@ def showActionResult(actres):
     else:
         fail()
     LogLevelHolder.last_level = LogLevelHolder.success_level
-    if actres.msg != None:
+    if actres.msg is not None:
         if isinstance(actres.msg, str):
             comment(actres.msg)
         else:
@@ -159,7 +159,7 @@ def show(msg, level, module = None, with_success = False, stdout = False):
         out = sys.stderr
     LogLevelHolder.last_level = level
     if level >= getLogLevel() :
-        if module != None:
+        if module is not None:
             color = __module_colors[level]
             colored_module = __colorize("darkmagenta", "/").join([__colorize(color, mod) for mod in module.split('/')])
             msg = __colorize("magenta", "[") + colored_module + __colorize("magenta", "]") + " " + msg

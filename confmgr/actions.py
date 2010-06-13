@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
 
 # Global imports
@@ -51,13 +51,13 @@ def parse_file(src):
             row = line[:-1]
         else:
             row = line
-        if re_comment.match(row) != None:
+        if re_comment.match(row) is not None:
             log.debug("Encountered comment : %s" % row, "FileParser")
             yield (False, '', line)
-        elif write and re_escaped.match(row) != None:
+        elif write and re_escaped.match(row) is not None:
             log.debug("Escaping row : %s" % row, "FileParser")
             yield (True, row[:2] + row[3:] + "\n", line)
-        elif re_command.match(row) != None:
+        elif re_command.match(row) is not None:
             parts = row[2:].split(' ', 1)
             command = parts[0]
             log.debug("Encountered command %s" % command, "FileParser")
@@ -173,7 +173,7 @@ def def_check():
 # {{{2 Model of actions
 from abc import ABCMeta, abstractmethod
 
-class ActionResult:
+class ActionResult(object):
     """Stores the result of an action, as a couple (success, msg) (msg being a list of str)"""
     def __init__(self, success = False, msg = None):
         self.success = success
@@ -195,7 +195,7 @@ class Action(object):
         cfg = config.getConfig()
         for (key, val) in cfg.getActionsOptions(self.__class__.__name__).items():
             self.defaults[key] = val
-        if defaults != None:
+        if defaults is not None:
             for (key, val) in defaults.getItems():
                 self.defaults[key] = val
 
@@ -461,7 +461,7 @@ def getActionsList():
     return acts
 
 def actionExists(act):
-    return all.has_key(act)
+    return act in all
 
 def actionName(act):
     if actionExists(act):

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
 
 import sys, os, optparse, subprocess, shutil
@@ -29,7 +29,7 @@ def __loadCommands(dir):
 
 # {{{1 __getCommand
 def __getCommand(command):
-    if command in __commands.keys():
+    if command in __commands:
         return __commands[command]
     else:
         log.crit("Unknown command %s." % command, "Core")
@@ -40,7 +40,7 @@ def getHelp(cmd):
     """Returns the docstring of the command cmd"""
     cmd = __getCommand(cmd)
     doc = cmd.getHelp()
-    if doc == None:
+    if doc is None:
         return ""
     else:
         return doc
@@ -117,6 +117,18 @@ class Command(object):
         """Method which should be overriden for each command"""
         pass
 
+    @classmethod
+    def applyToFiles(cls, callback, files = None):
+        cfg = cls._getCfg()
+        if files is None:
+            files = cfg.files
+        for file in files:
+            if file not in cfg.filerules:
+                log.warn("No rules given for file %s, ignoring." % file)
+            else:
+                rule = cfg.filerules[file]
+                callback(rule)
+
 # {{{2 cmdInit
 class cmdInit(Command):
     """Initialize a confmgr repo in the current directory"""
@@ -179,7 +191,7 @@ class cmdImport(Command):
     def apply(self):
         cfg = self._getCfg()
 
-        if self.opts.folder == None:
+        if self.opts.folder is None:
             log.crit("Error : The 'folder' argument is mandatory.")
             sys.exit(1)
         repo_root = cfg.getRoot()
@@ -268,7 +280,7 @@ class cmdExport(Command):
 
         target_host = self.args[0]
         exportdir = 'export-' + target_host
-        if opts.exportdir != None:
+        if opts.exportdir is not None:
             exportdir = opts.exportdir
 
         cfg.setHost(target_host)
@@ -289,13 +301,13 @@ class cmdBuild(Command):
     def build(cls, files = []):
         """Actually asks for building all files, or only those given as argument"""
         cfg = self._getCfg()
-        known_files = cfg.filerules.keys()
 
         # Load files given as arguments
         _files = []
         if len(files) > 0:
             for file in files:
                 if file not in cfg.files:
+                    # FIXME : unclear code, use os.path.separator ?
                     parts = file.split('/')
                     if (parts[0] == cfg.getSrcSubdir() or parts[0] == cfg.getDstSubdir()) and '/'.join(parts[1:]) in cfg.files:
                         _files.append('/'.join(parts[1:]))
@@ -306,12 +318,7 @@ class cmdBuild(Command):
         else:
             _files = cfg.files
 
-        for file in _files:
-            if file not in known_files:
-                log.warn("No rules given for file %s, ignoring." % file)
-            else:
-                rule = cfg.filerules[file]
-                rule.build()
+        self.applyToFiles(lambda rule: rule.build(), _files)
 
 # {{{2 cmdInstall
 class cmdInstall(Command):
@@ -322,14 +329,7 @@ class cmdInstall(Command):
         parser.add_option("-f", "--force", action="store_true", dest="force", help="Force install")
 
     def apply(self):
-        cfg = self._getCfg()
-        known_files = cfg.filerules.keys()
-        for file in cfg.files:
-            if file not in known_files:
-                log.warn("No rules given for file %s, ignoring." % file)
-            else:
-                rule = cfg.filerules[file]
-                rule.install()
+        self.applyToFiles(lambda rule: rule.install())
 
 # {{{2 cmdCheck
 class cmdCheck(Command):
@@ -339,56 +339,28 @@ class cmdCheck(Command):
     - Between compiled and installed"""
 
     def apply(self):
-        cfg = self._getCfg()
-        known_files = cfg.filerules.keys()
-        for file in cfg.files:
-            if file not in known_files:
-                log.warn("No rules given for file %s, ignoring." % file)
-            else:
-                rule = cfg.filerules[file]
-                rule.check()
+        self.applyToFiles(lambda rule: rule.check())
 
 # {{{2 cmdRetrieve
 class cmdRetrieve(Command):
     """Retrive installed files"""
 
     def apply(self):
-        cfg = self._getCfg()
-        known_files = cfg.filerules.keys()
-        for file in cfg.files:
-            if file not in known_files:
-                log.warn("No rules given for file %s, ignoring." % file)
-            else:
-                rule = cfg.filerules[file]
-                rule.retrieve()
+        self.applyToFiles(lambda rule: rule.retrieve())
 
 # {{{2 cmdBackport
 class cmdBackport(Command):
     """Backport modifications of retrieved files to their source versions"""
 
     def apply(self):
-        cfg = self._getCfg()
-        known_files = cfg.filerules.keys()
-        for file in cfg.files:
-            if file not in known_files:
-                log.warn("No rules given for file %s, ignoring." % file)
-            else:
-                rule = cfg.filerules[file]
-                rule.backport()
+        self.applyToFiles(lambda rule: rule.backport())
 
 # {{{2 cmdDiff
 class cmdDiff(Command):
     """Print diff between compiled files and installed versions."""
 
     def apply(self):
-        cfg = self._getCfg()
-        known_files = cfg.filerules.keys()
-        for file in cfg.files:
-            if file not in known_files:
-                log.warn("No rules given for file %s, ignoring." % file)
-            else:
-                rule = cfg.filerules[file]
-                rule.diff()
+        self.applyToFiles(lambda rule: rule.diff())
 
 # {{{1 Global command initialization
 __commands = __loadCommands(dir())

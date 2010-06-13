@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
 
 # Global imports
@@ -13,13 +13,13 @@ userConfig = "~/.confmgr"
 
 def getConfig():
     conf = cfg
-    if conf == None:
+    if conf is None:
         log.fulldebug("Initializing config.", module="Config")
         conf = Config()
     return conf
 
 # {{{1 class Config
-class Config:
+class Config(object):
     """Purpose : store all config"""
 
     # {{{2 __init__
@@ -116,7 +116,7 @@ class Config:
 
     # {{{2 readRepoConfig
     def readRepoConfig(self, configfile = None):
-        if configfile == None:
+        if configfile is None:
             configfile = self.getRoot() + "/config"
 
         log.debug("Reading repo config from %s" % configfile, module="Config")
@@ -134,17 +134,17 @@ class Config:
             for line in f:
                 row = line[:-1]
                 m = re_section.match(row)
-                if m != None:
+                if m is not None:
                     section = m.group(1)
                 else:
                     if section.upper() == "DEFAULT":
                         m = re_cfg_row.match(row)
-                        if m != None:
+                        if m is not None:
                             (key, val) = m.groups()
                             self.config.set("DEFAULT", key, val)
                     else:
                         m = re_cplx_row.match(row)
-                        if m != None:
+                        if m is not None:
                             (pre, post) = m.groups()
                             if section.lower() in ("categories", "cats", "category"):
                                 self.__cats.append((pre.strip(), post.strip()))
@@ -257,17 +257,17 @@ class Config:
         with open(path_file) as f:
             for line in f:
                 row = line[:-1]
-                if re_ignore_row.match(row) == None:
+                if re_ignore_row.match(row) is None:
                     if keep_reading:
                         cur += row
                     else:
-                        if re_file_init.match(row) != None:
+                        if re_file_init.match(row) is not None:
                             if cur != "":
                                 commands.append(cur)
                             cur = row
                         else:
                             log.warn("Erroneous row %s in %s." % (row, path_file), "Config/PathFiles")
-                    if re_keep_going_row.match(row) != None:
+                    if re_keep_going_row.match(row) is not None:
                         # Strip the '\' at the end of cur
                         cur = cur[:-1]
                         keep_reading = True
@@ -289,7 +289,7 @@ class Config:
             self.filerules[file] = misc.FileRule(file, target, options)
 
 # {{{1 class CatExpandRule
-class CatExpandRule:
+class CatExpandRule(object):
     """Holds a 'category' rule"""
 
     re_spl_pre = re.compile("^[\w \t]+$")
@@ -297,7 +297,7 @@ class CatExpandRule:
         """Parses a pre and post pair to build the rule"""
         self.simple = False
         self.sons = set(post.split())
-        if CatExpandRule.re_spl_pre.match(pre) != None:
+        if CatExpandRule.re_spl_pre.match(pre) is not None:
             self.simple = True
             self.spl_parents = pre.split()
         else:
@@ -316,13 +316,13 @@ class CatExpandRule:
                 return set([])
 
 # {{{1 class FileExpandRule
-class FileExpandRule:
+class FileExpandRule(object):
     re_spl_pre = re.compile("^[\w \t]+$")
 
     def __init__(self, pre, post):
         self.simple = False
         self.sons = set(post.split())
-        if FileExpandRule.re_spl_pre.match(pre) != None:
+        if FileExpandRule.re_spl_pre.match(pre) is not None:
             self.simple = True
             self.spl_parents = pre.split()
         else:
