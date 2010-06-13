@@ -10,15 +10,15 @@ import log, config, misc
 
 def isTextFile(file):
     """Determines, through 'file -b FILE', whether FILE is text"""
-    type = subprocess.Popen(['file', '-b', file], stdout=subprocess.PIPE).communicate()[0]
-    return ('text' in [x.strip(' ,.') for x in type.split()])
+    filetype = subprocess.Popen(['file', '-b', file], stdout=subprocess.PIPE).communicate()[0]
+    return ('text' in [x.strip(' ,.') for x in filetype.split()])
 
 def getHash(strings):
     """Returns the md5 hash of the strings row array"""
-    hash = hashlib.md5()
+    _hash = hashlib.md5()
     for row in strings:
-        hash.update(row)
-    return hash.hexdigest()
+        _hash.update(row)
+    return _hash.hexdigest()
 
 def linkTarget(file):
     if not os.path.islink(file):
@@ -232,13 +232,13 @@ class Action(object):
         """
         res = dict()
         for rule in batch:
-            if len(rule) < 3:
-                res.append(ActionResult(msg = "Empty rule ?!?"))
+            if len(rule) != 0 and len(rule) < 3:
+                res[rule[0]] = ActionResult(msg = "Empty rule ?!?")
             else:
                 res[rule[0]] = self.apply(rule[1], rule[2], *rule[3:])
         return res
 
-# {{{2 std_build
+# {{{2 stdBuildAction
 class stdBuildAction(Action):
     """Default building of a file"""
 
@@ -250,7 +250,7 @@ class stdBuildAction(Action):
                     g.write(line)
         return ActionResult(success = True)
 
-# {{{2 std_backport
+# {{{2 stdBackportAction
 class stdBackportAction(Action):
     """Default backporting of a file to another one
 
@@ -304,23 +304,24 @@ class stdBackportAction(Action):
 
         return ActionResult(success = True)
 
-# {{{2 std_install
+# {{{2 stdInstallAction
 class stdInstallAction(Action):
     """Default installation of a file"""
 
     def apply(self, src, dst, *params):
         log.comment("Installing %s on %s" % (src, dst))
-        if not os.path.exists(os.path.dirname(dst)):
-            dir = os.path.dirname(dst)
-            log.comment("Folder %s doesn't exist, creating" % dir)
-            os.makedirs(dir)
+        dst_dir = os.path.dirname(dst)
+        if not os.path.exists(dst_dir):
+            dst_dir = os.path.dirname(dst)
+            log.comment("Folder %s doesn't exist, creating" % dst_dir)
+            os.makedirs(dst_dir)
         (dstname, copied) = f_util.copy_file(src, dst, preserve_mode = True, preserve_times = True, update = True)
         if copied:
             return ActionResult(success = True)
         else:
             return ActionResult(success = False)
 
-# {{{2 std_copy
+# {{{2 stdCopyAction
 class stdCopyAction(Action):
     """Default copy of a file (like install, but no checks)"""
 
@@ -328,7 +329,7 @@ class stdCopyAction(Action):
         f_util.copy_file(src, dst, preserve_mode = False, preserve_times = True, update = False)
         return ActionResult(success = True)
 
-# {{{2 std_copy_link
+# {{{2 stdCopyLinkAction
 class stdCopyLinkAction(Action):
     """Copies a link (i.e if a->b is copied to c->b)"""
 
@@ -340,20 +341,21 @@ class stdCopyLinkAction(Action):
         os.symlink(tgt, dst)
         return ActionResult(success = True)
 
-# {{{2 std_retrieve
+# {{{2 stdRetrieveAction
 class stdRetrieveAction(Action):
     """Retrieves an installed file"""
 
     def apply(self, src, dst, *params):
         log.debug("Retrieving %s from %s" % (dst, src))
-        if not os.path.exists(os.path.dirname(dst)):
-            dir = os.path.dirname(dst)
-            log.notice("Folder %s doesn't exist, creating" % dir)
-            os.makedirs(dir)
+        dst_dir = os.path.dirname(dst)
+        if not os.path.exists(dst_dir):
+            dst_dir = os.path.dirname(dst)
+            log.comment("Folder %s doesn't exist, creating" % dst_dir)
+            os.makedirs(dst_dir)
         f_util.copy_file(src, dst, update = False)
         return ActionResult(success = True)
 
-# {{{2 std_link
+# {{{2 stdLinkAction
 class stdLinkAction(Action):
     """Links dst to src"""
 
@@ -362,14 +364,14 @@ class stdLinkAction(Action):
         os.symlink(src, dst)
         return ActionResult(True)
 
-# {{{2 std_none
+# {{{2 stdEmptyAction
 class stdEmptyAction(Action):
     """Does nothing"""
 
     def apply(self, src, dst, *params):
         return ActionResult(True, "Nothing done for %s to %s" % (src, dst))
 
-# {{{2 std_diff
+# {{{2 stdDiffAction
 class stdDiffAction(Action):
     """Computes the raw diff between src and dst"""
 
@@ -380,7 +382,7 @@ class stdDiffAction(Action):
             [log.display(row) for row in diff.splitlines()]
         return ActionResult(success = len(diff) == 0)
 
-# {{{2 std_check
+# {{{2 stdCheckAction
 class stdCheckAction(Action):
     """Verifies that all goes fine between src, dst, installed"""
 
@@ -419,36 +421,45 @@ class stdCheckAction(Action):
             return ActionResult(success = False, msg = '; '.join(msgs))
 
 # {{{1 custom command callers
-# {{{2 call_cmd(cmd)
-def callCmdAction(Action):
+# {{{2 callCmdAction
+class callCmdAction(Action):
     def __init__(self, cmd):
         self.cmd = cmd
 
     def apply(self, src, dst, *params):
-        res = subprocess.call(cmd + [src, dst] + [arg for arg in args])
+        res = subprocess.call(self.cmd + [src, dst] + [arg for arg in params])
         return ActionResult(success = (res == 0))
 
-# {{{2 custom_preinstall
-def custom_preinstall(src, dst, cmd):
+# {{{2 customPreinstallAction
+class customPreinstallAction(Action):
     """Calls cmd (and explains it happened before dst installation)"""
-    log.info("Pre-install (%s) : running %s" % (dst, cmd), with_success = True)
-    ret = subprocess.call(cmd)
-    if ret != 0:
-        log.warn("Error : pre-install action for %s exited with code %i" % (dst, ret), "Actions/custom_preinstall")
-        log.fail()
-    else:
-        log.success()
 
-# {{{2 custom_postinstall
-def custom_postinstall(src, dst, cmd):
+    def __init__(self, cmd):
+        self.cmd = cmd
+
+    def apply(self, src, dst, *params):
+        log.info("Pre-install (%s) : running %s" % (dst, self.cmd), with_success = True)
+        ret = subprocess.call(self.cmd)
+        if ret != 0:
+            log.warn("Error : pre-install action for %s exited with code %i" % (dst, ret), "Actions/custom_preinstall")
+            log.fail()
+        else:
+            log.success()
+
+# {{{2 customPostinstallAction
+class customPostinstallAction(Action):
     """Calls cmd (and explains it happened after dst installation)"""
-    log.info("Post-install (%s) : running %s" % (dst, cmd), with_success = True)
-    ret = subprocess.call(cmd)
-    if ret != 0:
-        log.warn("Error : post-install action for %s exited with code %i" % (dst, ret), "Actions/custom_postinstall")
-        log.fail()
-    else:
-        log.success()
+    def __init__(self, cmd):
+        self.cmd = cmd
+
+    def apply(self, src, dst, *params):
+        log.info("Post-install (%s) : running %s" % (dst, self.cmd), with_success = True)
+        ret = subprocess.call(self.cmd)
+        if ret != 0:
+            log.warn("Error : post-install action for %s exited with code %i" % (dst, ret), "Actions/custom_postinstall")
+            log.fail()
+        else:
+            log.success()
 
 # {{{1 Build list of available actions
 __actionsdir = dir()

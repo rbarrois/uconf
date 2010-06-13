@@ -4,7 +4,6 @@
 import sys, os
 
 import confmgr
-from confmgr import log
 
 def parse(argv):
     """This function is used to parse the input from command line
@@ -31,10 +30,16 @@ Global options :
   -V, --version  Print version information and exit
   -h, --help     Print this help message and exit
   -v, --verbose  Increase verbosity (several uses increase verbosity level)
-  -q, --quiet    Decrease verbosity (several uses decrease verbosity level)\n""".format(prog=os.path.basename(sys.argv[0]))
+  -q, --quiet    Decrease verbosity (several uses decrease verbosity level)\n""".format(
+          prog=os.path.basename(sys.argv[0]) )
 
-    help = short_help + "\n" + """The list of options and arguments for a command can be accessed through :
-    {prog} help <command>\n""".format(prog=os.path.basename(sys.argv[0])) + "\n" + cmds_list + "\n"
+    full_help = """{short}\nThe list of options and arguments for a command can be accessed through :
+    {prog} help <command>
+
+    {cmds}\n""".format(
+        short = short_help,
+        prog = os.path.basename(sys.argv[0]),
+        cmds = cmds_list)
 
     if len(argv) > 0:
         if argv[0] in ('--version', '-version', 'version', '-V'):
@@ -50,7 +55,7 @@ Global options :
                     sys.stdout.write("Unknown command %s\n\n" % argv[1])
                     sys.stdout.write(short_help)
             else:
-                sys.stdout.write(help)
+                sys.stdout.write(full_help)
             sys.exit(0)
         elif argv[0] in confmgr.modules:
             confmgr.call(argv[0], argv[1:])

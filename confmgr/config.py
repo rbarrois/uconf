@@ -281,12 +281,12 @@ class Config(object):
             if len(parts) < 2:
                 log.warn("Too short line : %s" % command, "Config/PathFiles")
                 continue
-            file = os.path.join(subdir, parts[0])
+            filename = os.path.join(subdir, parts[0])
             target = parts[1]
             options = ''
             if len(parts) == 3:
                 options = parts[2]
-            self.filerules[file] = misc.FileRule(file, target, options)
+            self.filerules[filename] = misc.FileRule(filename, target, options)
 
 # {{{1 class CatExpandRule
 class CatExpandRule(object):
@@ -326,7 +326,7 @@ class FileExpandRule(object):
             self.simple = True
             self.spl_parents = pre.split()
         else:
-            self.rule = parse_cplx_pre(pre)
+            self.rule = misc.parse_cplx_pre(pre)
 
     def apply(self, cats):
         if self.simple:

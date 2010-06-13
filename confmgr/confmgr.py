@@ -5,7 +5,7 @@ import sys, os, optparse, subprocess, shutil
 from abc import ABCMeta, abstractmethod
 
 # local imports
-import log, config, actions, misc
+import log, config, misc
 
 #version = @@VERSION@@
 version = '@VERSION@'
@@ -122,11 +122,11 @@ class Command(object):
         cfg = cls._getCfg()
         if files is None:
             files = cfg.files
-        for file in files:
-            if file not in cfg.filerules:
-                log.warn("No rules given for file %s, ignoring." % file)
+        for filename in files:
+            if filename not in cfg.filerules:
+                log.warn("No rules given for file %s, ignoring." % filename)
             else:
-                rule = cfg.filerules[file]
+                rule = cfg.filerules[filename]
                 callback(rule)
 
 # {{{2 cmdInit
@@ -167,7 +167,7 @@ install_root = {i}
             with open(conf, 'w') as f:
                 f.write(skel)
 
-        mkdirs = [os.path.join(root, dir) for dir in [srcdir, dstdir]]
+        mkdirs = [os.path.join(root, d) for d in [srcdir, dstdir]]
         for mkdir in mkdirs:
             if not os.path.exists(mkdir):
                 os.mkdir(mkdir)
@@ -194,7 +194,6 @@ class cmdImport(Command):
         if self.opts.folder is None:
             log.crit("Error : The 'folder' argument is mandatory.")
             sys.exit(1)
-        repo_root = cfg.getRoot()
         src_path = cfg.getSrc()
         folder = os.path.normpath(self.opts.folder)
 
@@ -205,9 +204,8 @@ class cmdImport(Command):
         log.info("Adding files to the %s folder (%s)" % (folder, os.path.join(src_path, folder)))
 
         cat = self.opts.cat
-        for file in self.args:
-            log.fulldebug(repr(folder))
-            self.importFile(file, folder=folder, cat=cat)
+        for f in self.args:
+            self.importFile(f, folder=folder, cat=cat)
 
     @classmethod
     def importFile(cls, path, folder, cat="All"):
@@ -248,18 +246,18 @@ class cmdImport(Command):
         files.sort()
         # Handle files
         with open(pathfile, 'a') as f:
-            for (file, install_file) in files:
+            for (filename, install_file) in files:
                 relp = os.path.relpath(install_file, install_root)
-                log.info("Adding file %s" % file, module="Import")
-                f.write("%s %s\n" % (file, relp))
+                log.info("Adding file %s" % filename, module="Import")
+                f.write("%s %s\n" % (filename, relp))
                 if os.path.exists(install_file):
-                    dirname = os.path.dirname(file)
+                    dirname = os.path.dirname(filename)
                     absdirname = os.path.join(absfolder, dirname)
                     if dirname != '' and dirname != '.' and not os.path.exists(absdirname):
                         os.makedirs(absdirname)
-                    shutil.copy(install_file, os.path.join(absfolder, file))
+                    shutil.copy(install_file, os.path.join(absfolder, filename))
         with open(os.path.join(repo_root, "config"), 'a') as g:
-            g.write("%s: %s\n" % (cat, ' '.join([os.path.join(folder,file) for (file, install_file) in files])))
+            g.write("%s: %s\n" % (cat, ' '.join([os.path.join(folder,filename) for (filename, install_file) in files])))
 
 # {{{2 cmdExport
 class cmdExport(Command):
@@ -280,8 +278,8 @@ class cmdExport(Command):
 
         target_host = self.args[0]
         exportdir = 'export-' + target_host
-        if opts.exportdir is not None:
-            exportdir = opts.exportdir
+        if self.opts.exportdir is not None:
+            exportdir = self.opts.exportdir
 
         cfg.setHost(target_host)
         cfg.setDst(exportdir)
@@ -300,25 +298,25 @@ class cmdBuild(Command):
     @classmethod
     def build(cls, files = []):
         """Actually asks for building all files, or only those given as argument"""
-        cfg = self._getCfg()
+        cfg = cls._getCfg()
 
         # Load files given as arguments
         _files = []
         if len(files) > 0:
-            for file in files:
-                if file not in cfg.files:
+            for filename in files:
+                if filename not in cfg.files:
                     # FIXME : unclear code, use os.path.separator ?
-                    parts = file.split('/')
+                    parts = filename.split('/')
                     if (parts[0] == cfg.getSrcSubdir() or parts[0] == cfg.getDstSubdir()) and '/'.join(parts[1:]) in cfg.files:
                         _files.append('/'.join(parts[1:]))
                     else:
-                        log.warn("No configuration for file %s, ignoring." % file)
+                        log.warn("No configuration for file %s, ignoring." % filename)
                 else:
-                    _files.append(file)
+                    _files.append(filename)
         else:
             _files = cfg.files
 
-        self.applyToFiles(lambda rule: rule.build(), _files)
+        cls.applyToFiles(lambda rule: rule.build(), _files)
 
 # {{{2 cmdInstall
 class cmdInstall(Command):

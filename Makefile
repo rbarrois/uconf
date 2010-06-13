@@ -17,3 +17,6 @@ clean:
 
 reset: setup.py confmgr/confmgr.py
 reset: VERSION := "@VERSION@"
+
+test:
+	pychecker confmgr/*.py

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Global imports
-import os, re
+import os, re, sys
 
 # Local imports
 import log, config, actions
@@ -10,8 +10,8 @@ import log, config, actions
 def isSubdir(path, dir):
     """Tells whether a path is inside the repo root"""
     absdir = os.path.abspath(dir)
-    abs = os.path.normpath(os.path.join(dir, path))
-    return (absdir == os.path.commonprefix([abs, absdir]))
+    abspath = os.path.normpath(os.path.join(dir, path))
+    return (absdir == os.path.commonprefix([abspath, absdir]))
 
 # {{{1 def getTime()
 def getTime(file):
@@ -43,9 +43,9 @@ def parseOptions(options, def_options, file = ""):
     escaping = False
     quoting = False
     quoter = ""
-    for chr in options:
+    for char in options:
         if escaping:
-            cur += chr
+            cur += char
             escaping = False
         elif chr in ('\\'):
             if in_key:
@@ -53,18 +53,18 @@ def parseOptions(options, def_options, file = ""):
                 return
             escaping = True
         elif quoting:
-            if chr == quoter:
+            if char == quoter:
                 quoting = False
-                quotter = ''
-            cur += chr
-        elif chr in ('\'', '"'):
+                quoter = ''
+            cur += char
+        elif char in ('\'', '"'):
             if in_key:
-                log.crit("Forbidden %s char in option key for %s." % (chr, file), "ParseOptions")
+                log.crit("Forbidden %s char in option key for %s." % (char, file), "ParseOptions")
                 return
             quoting = True
-            quotter = chr
-            cur += chr
-        elif chr == ',':
+            quoter = char
+            cur += char
+        elif char == ',':
             if in_key:
                 opts[key] = True
             elif cur.lower() == 'true':
@@ -76,7 +76,7 @@ def parseOptions(options, def_options, file = ""):
             key = ""
             cur = ""
             in_key = True
-        elif chr in ('='):
+        elif char in ('='):
             if in_key:
                 in_key = False
             else:
@@ -84,13 +84,14 @@ def parseOptions(options, def_options, file = ""):
                 return
         else:
             if in_key:
-                key += chr
+                key += char
             else:
-                cur += chr
+                cur += char
     if in_key:
         opts[key] = True
     elif quoting:
         log.crit("Error : unclosed quotes in option %s for %s." % (key, file), "ParseOptions")
+        # TODO : replace all sys.exit with exceptions
         sys.exit(2)
     elif escaping:
         log.crit("Error : missing char after \\ in option %s for %s" % (key, file), "ParseOptions")
@@ -172,7 +173,7 @@ class FileRule(object):
                 return eval('actions.std_' + act)
             else:
                 log.debug("Calling %s for installing %s to %s" % (act, self.file, self.target), "Rules/Install")
-                return actions.call_cmd(act)
+                return actions.callCmdAction(act)
 
     def install(self):
         cfg = config.getConfig()
@@ -197,13 +198,15 @@ class FileRule(object):
         if 'preinstall' not in self.options or self.options['preinstall'] == '':
             return
         cmd = self.options['preinstall']
-        actions.custom_preinstall(src, dst, cmd)
+        act = actions.customPreinstallAction(cmd)
+        act.apply(src, dst)
 
     def _postinstall(self, src, dst):
         if 'postinstall' not in self.options or self.options['preinstall'] == '':
             return
         cmd = self.options['postinstall']
-        actions.custom_postinstall(src, dst, cmd)
+        act = actions.customPostinstallAction(cmd)
+        act.apply(src, dst)
 
     # {{{2 retrieve
     def _retrieveAction(self):
@@ -221,8 +224,8 @@ class FileRule(object):
                 log.debug("Applying non-default retrieve method %s to %s." % (act, self.file), "Rules/Retrieve")
                 return eval('actions.std_' + act)
             else:
-                log.debug("Calling %s for retrieveing %s to %s" % (act, self.file, self.target), "Rules/Retrieve")
-                return actions.call_cmd(act)
+                log.debug("Calling %s for retrieving %s to %s" % (act, self.file, self.target), "Rules/Retrieve")
+                return actions.callCmdAction(act)
 
     def retrieve(self):
         cfg = config.getConfig()
@@ -283,7 +286,7 @@ class FileRule(object):
                 return eval('actions.std_' + act)
             else:
                 log.debug("Calling %s for diffing %s with %s" % (act, self.file, self.target), "Rules/Diff")
-                return actions.call_cmd(act)
+                return actions.callCmdAction(act)
 
     def diff(self):
         cfg = config.getConfig()
@@ -311,7 +314,7 @@ class FileRule(object):
                 return eval('actions.std_' + act)
             else:
                 log.debug("Calling %s for checking %s with %s" % (act, self.file, self.target), "Rules/Check")
-                return actions.call_cmd(act)
+                return actions.callCmdAction(act)
 
     def check(self):
         cfg = config.getConfig()
