@@ -171,8 +171,6 @@ def def_check():
 # {{{1 standard commands
 
 # {{{2 Model of actions
-from abc import ABCMeta, abstractmethod
-
 class ActionResult(object):
     """Stores the result of an action, as a couple (success, msg) (msg being a list of str)"""
     def __init__(self, success = False, msg = None):
@@ -182,13 +180,10 @@ class ActionResult(object):
 class Action(object):
     """Stores an action.
 
-    This is an abstract class (cf doc of abc), all subclasses
-    must implement their "apply" method.
+    This is an abstract class, all subclasses must implement their "apply" method.
     A given action should be applicable to a whole set of files ; custom parameters can be passed as second argument to "apply"
     @param defaults Additional options to those from config
     """
-
-    __metaclass__ = ABCMeta
 
     def __init__(self, defaults = None):
         self.defaults = dict()

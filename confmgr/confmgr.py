@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import sys, os, optparse, subprocess, shutil
-from abc import ABCMeta, abstractmethod
 
 # local imports
 import log, config, misc
@@ -60,8 +59,6 @@ def call(command, args):
 class Command(object):
     """The class for a given command"""
     # Put the doc for the command in its doc string
-
-    __metaclass__ = ABCMeta
 
     def __init__(self, args):
         (self.opts, self.args) = self.__class__.__parse(args)
