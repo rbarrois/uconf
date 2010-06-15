@@ -67,12 +67,12 @@ class Config(object):
         while path != "":
             if os.path.isdir(path):
                 if "config" in os.listdir(path):
-                    log.debug("Found repo root at %s" % path, "Config/FindRoot")
+                    log.debug("Found repo root at {0}".format(path), "Config/FindRoot")
                     return path
                 else:
                     path = os.path.dirname(path)
             else:
-                log.crit("Incorrect path : %s is not a dir" % path, "Config/FindRoot")
+                log.crit("Incorrect path : {0} is not a dir".format(path), "Config/FindRoot")
                 exit(1)
         log.crit("Unable to find repo root", "Config")
         exit(1)
@@ -82,7 +82,7 @@ class Config(object):
         if os.path.exists(root):
             self.config.set("DEFAULT", "root", root)
         else:
-            log.crit("Can't set repo root to non existent path %s" % root, "Config")
+            log.crit("Can't set repo root to non existent path {0}".format(root), "Config")
             exit(1)
         if os.path.exists(root + "/config") and os.access(root + "/config", os.R_OK):
             self.readRepoConfig(root + "/config")
@@ -119,7 +119,7 @@ class Config(object):
         if configfile is None:
             configfile = self.getRoot() + "/config"
 
-        log.debug("Reading repo config from %s" % configfile, module="Config")
+        log.debug("Reading repo config from {0}".format(configfile), module="Config")
         section = "DEFAULT"
 
         # Matches a section header
@@ -266,7 +266,7 @@ class Config(object):
                                 commands.append(cur)
                             cur = row
                         else:
-                            log.warn("Erroneous row %s in %s." % (row, path_file), "Config/PathFiles")
+                            log.warn("Erroneous row {row} in {file}.".format(row=row, file=path_file), "Config/PathFiles")
                     if re_keep_going_row.match(row) is not None:
                         # Strip the '\' at the end of cur
                         cur = cur[:-1]
@@ -279,7 +279,7 @@ class Config(object):
         for command in commands:
             parts = misc.filenameSplit(command, 3)
             if len(parts) < 2:
-                log.warn("Too short line : %s" % command, "Config/PathFiles")
+                log.warn("Too short line : {0}".format(command), "Config/PathFiles")
                 continue
             filename = os.path.join(subdir, parts[0])
             target = parts[1]

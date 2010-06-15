@@ -22,7 +22,11 @@ def parse(argv):
     max_mod_len = 4 # for 'help'
     for mod in mods:
         max_mod_len = max(max_mod_len, len(mod))
-    cmds_list = '\n'.join("  %s\t%s" % (str.ljust(cmd, max_mod_len), cmds[cmd]) for cmd in mods)
+    cmds_list = '\n'.join(
+            "  {cmd}\t{help}".format(
+                cmd = str.ljust(cmd, max_mod_len),
+                help = cmds[cmd])
+            for cmd in mods)
 
     short_help = """Usage: {prog} command [options] [args]
 
@@ -49,10 +53,10 @@ Global options :
             if len(argv) > 1:
                 if argv[1] in confmgr.modules:
                     sys.stdout.write(short_help)
-                    sys.stdout.write("----------\nHelp for ``%s'' :\n\n" % argv[1])
+                    sys.stdout.write("----------\nHelp for ``{module}'' :\n\n".format(module=argv[1]))
                     confmgr.call(argv[1], ['-h'] + argv[2:])
                 else:
-                    sys.stdout.write("Unknown command %s\n\n" % argv[1])
+                    sys.stdout.write("Unknown command {0}\n\n".format(argv[1]))
                     sys.stdout.write(short_help)
             else:
                 sys.stdout.write(full_help)
@@ -61,6 +65,6 @@ Global options :
             confmgr.call(argv[0], argv[1:])
         else:
             if len(argv) > 1:
-                sys.stdout.write("Unknown command %s\n\n" % argv[1])
+                sys.stdout.write("Unknown command {0}\n\n".format(argv[1]))
             sys.stdout.write(short_help)
             sys.exit(1)
