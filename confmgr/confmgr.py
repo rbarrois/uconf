@@ -50,7 +50,8 @@ def call(command, args):
     Command._getCfg(False)
     cmdclass = __getCommand(command)
     log.fulldebug("Found command {0}".format(cmdclass.__name__), "Caller")
-    cmd = cmdclass(args)
+    cmd = cmdclass()
+    cmd.loadArgs(args)
     return cmd.apply()
 
 # {{{1 commands
@@ -60,7 +61,11 @@ class Command(object):
     """The class for a given command"""
     # Put the doc for the command in its doc string
 
-    def __init__(self, args):
+    def __init__(self):
+        self.opts = None
+        self.args = None
+
+    def loadArgs(self, args):
         (self.opts, self.args) = self.__class__.__parse(args)
 
     @staticmethod
