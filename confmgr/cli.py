@@ -1,22 +1,24 @@
 #!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
 
-import sys, os
+import sys
+import os
 
-import confmgr
+import core
+
 
 def parse(argv):
     """This function is used to parse the input from command line
 
     It expects the content of sys.argv[1:]."""
 
-    mods = ['version', 'help'] + confmgr.modules
+    mods = ['version', 'help'] + core.modules
     mods.sort()
     cmds = dict()
     cmds['version'] = 'Print version information and exit'
     cmds['help'] = 'Print help message and exit'
-    for md in confmgr.modules:
-        doc = confmgr.getHelp(md)
+    for md in core.modules:
+        doc = core.getHelp(md)
         cmds[md] = doc.split('\n')[0]
 
     max_mod_len = 4 # for 'help'
@@ -47,22 +49,22 @@ Global options :
 
     if len(argv) > 0:
         if argv[0] in ('--version', '-version', 'version', '-V'):
-            confmgr.printVersion()
+            sys.stdout.write(core.getVersion())
             sys.exit(0)
         elif argv[0] in ('-h', '-help', '--help', 'help'):
             if len(argv) > 1:
-                if argv[1] in confmgr.modules:
+                if argv[1] in core.modules:
                     sys.stdout.write(short_help)
                     sys.stdout.write("----------\nHelp for ``{module}'' :\n\n".format(module=argv[1]))
-                    confmgr.call(argv[1], ['-h'] + argv[2:])
+                    core.call(argv[1], ['-h'] + argv[2:])
                 else:
                     sys.stdout.write("Unknown command {0}\n\n".format(argv[1]))
                     sys.stdout.write(short_help)
             else:
                 sys.stdout.write(full_help)
             sys.exit(0)
-        elif argv[0] in confmgr.modules:
-            confmgr.call(argv[0], argv[1:])
+        elif argv[0] in core.modules:
+            core.call(argv[0], argv[1:])
         else:
             if len(argv) > 1:
                 sys.stdout.write("Unknown command {0}\n\n".format(argv[1]))

@@ -1,38 +1,26 @@
 #!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
 
-import sys, os, optparse, subprocess, shutil
+import sys
+import os
+import optparse
+import subprocess
+import shutil
 
 # local imports
-import log, config, misc
+import log
+import config
+import misc
+
 
 #version = @@VERSION@@
 version = '@VERSION@'
 
-def printVersion():
-    sys.stdout.write("""Confmgr {v}
-Copyright (C) 2009 XelNet
+def getVersion():
+    return """Confmgr {v}
+Copyright (C) 2009-2010 XelNet
 
-Written by Raphaël Barrois (Xelnor).\n""".format(v = version))
-
-# {{{1 __getMethods
-def __loadCommands(dir):
-    """Lists commands implemented in current code"""
-    res = dict()
-    for item in dir:
-        if item[:3] == "cmd":
-            cmd = item[3:].lower()
-            res[cmd] = eval(item)
-    log.fulldebug("Available commands are : {0}".format(repr(res)), "Core")
-    return res
-
-# {{{1 __getCommand
-def __getCommand(command):
-    if command in __commands:
-        return __commands[command]
-    else:
-        log.crit("Unknown command {0}.".format(command), "Core")
-        exit(1)
+Written by Raphaël Barrois (Xelnor).\n""".format(v = version)
 
 # {{{1 getHelp
 def getHelp(cmd):
@@ -46,7 +34,7 @@ def getHelp(cmd):
 
 # {{{1 call
 def call(command, args):
-    """Wrapper to confmgr.command(args)"""
+    """Wrapper to core.Command(args)"""
     Command._getCfg(False)
     cmdclass = __getCommand(command)
     log.fulldebug("Found command {0}".format(cmdclass.__name__), "Caller")
@@ -362,6 +350,26 @@ class cmdDiff(Command):
         self.applyToFiles(lambda rule: rule.diff())
 
 # {{{1 Global command initialization
+
+# {{{2 __loadCommands
+def __loadCommands(dir):
+    """Lists commands implemented in current code"""
+    res = dict()
+    for item in dir:
+        if item[:3] == "cmd":
+            cmd = item[3:].lower()
+            res[cmd] = eval(item)
+    log.fulldebug("Available commands are : {0}".format(repr(res)), "Core")
+    return res
+
+# {{{2 __getCommand
+def __getCommand(command):
+    if command in __commands:
+        return __commands[command]
+    else:
+        log.crit("Unknown command {0}.".format(command), "Core")
+        exit(1)
+
 __commands = __loadCommands(dir())
 modules = __commands.keys()
 

@@ -2,11 +2,18 @@
 # -*- coding: utf-8 -*-
 
 # Global imports
-import os, re, difflib, hashlib, subprocess
+import os
+import re
+import difflib
+import hashlib
+import subprocess
 import distutils.file_util as f_util
 
 # Local imports
-import log, config, misc
+import log
+import config
+import misc
+
 
 def isTextFile(file):
     """Determines, through 'file -b FILE', whether FILE is text"""

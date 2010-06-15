@@ -2,10 +2,15 @@
 # -*- coding: utf-8 -*-
 
 # Global imports
-import ConfigParser, os, re, subprocess
+import ConfigParser
+import os
+import re
+import subprocess
 
 # Local imports
-import log, misc
+import log
+import misc
+
 
 
 systemConfig = "/etc/confmgr.conf"

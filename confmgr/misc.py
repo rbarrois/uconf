@@ -2,10 +2,16 @@
 # -*- coding: utf-8 -*-
 
 # Global imports
-import os, re, sys
+import os
+import re
+import sys
+
 
 # Local imports
-import log, config, actions
+import log
+import config
+import actions
+
 
 def isSubdir(path, dir):
     """Tells whether a path is inside the repo root"""
