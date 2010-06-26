@@ -53,7 +53,7 @@ def parseOptions(options, def_options, file = ""):
         if escaping:
             cur += char
             escaping = False
-        elif chr in ('\\'):
+        elif char in ('\\'):
             if in_key:
                 log.crit("Unexpected '\\' char in option key for {0}.".format(file), "ParseOptions")
                 return
@@ -93,7 +93,7 @@ def parseOptions(options, def_options, file = ""):
                 key += char
             else:
                 cur += char
-    if in_key:
+    if in_key and key != '':
         opts[key] = True
     elif quoting:
         log.crit("Error : unclosed quotes in option {o} for {f}.".format(o = key, f = file), "ParseOptions")
@@ -102,7 +102,7 @@ def parseOptions(options, def_options, file = ""):
     elif escaping:
         log.crit("Error : missing char after \\ in option {o} for {f}".format(o = key, f = file), "ParseOptions")
         sys.exit(2)
-    else:
+    elif key != '':
         if cur.lower() == 'true':
             opts[key] = True
         elif cur.lower() == 'false':
@@ -118,7 +118,7 @@ class FileRule(object):
         self.target = target
         self.parseOptions(options)
         log.debug("Added rule for '{f}' : target is '{t}', with options {o}".format(f = file, t = target, o = options), "Rules")
-        log.fulldebug("Options are : {0}".format(repr)(self.options), "FileRule/Options")
+        log.fulldebug("Options are : {0}".format(repr(self.options)), "FileRule/Options")
 
     def parseOptions(self, options):
         cfg = config.getConfig()
