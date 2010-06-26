@@ -8,14 +8,14 @@ all: prepare
 %.py: Makefile ChangeLog FORCE
 	@sed -i -r "s:(^ *version[[:space:]]+=[[:space:]]')[^']*('.*):\1${VERSION}\2:g" $@
 
-prepare: setup.py confmgr/confmgr.py
+prepare: setup.py confmgr/core.py
 	python setup.py sdist
 	make reset
 
 clean:
 	@rm -rfv build dist
 
-reset: setup.py confmgr/confmgr.py
+reset: setup.py confmgr/core.py
 reset: VERSION := "@VERSION@"
 
 test:
