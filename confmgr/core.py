@@ -108,7 +108,7 @@ class Command(object):
 
     @classmethod
     def applyToFiles(cls, callback, files = None):
-        cfg = cls._getCfg()
+        cfg = cls._getCfg(False)
         if files is None:
             files = cfg.files
         for filename in files:
@@ -272,7 +272,8 @@ class cmdExport(Command):
 
         cfg.setHost(target_host)
         cfg.setDst(exportdir)
-        cmdBuild.build([])
+        log.debug("Ready to export files for {0}".format(target_host), "cmdExport")
+        cmdBuild.build([], initconfig = False)
 
 # {{{2 cmdBuild
 class cmdBuild(Command):
@@ -285,9 +286,9 @@ class cmdBuild(Command):
         self.build(self.args)
 
     @classmethod
-    def build(cls, files = []):
+    def build(cls, files = [], initconfig = True):
         """Actually asks for building all files, or only those given as argument"""
-        cfg = cls._getCfg()
+        cfg = cls._getCfg(initconfig)
 
         # Load files given as arguments
         _files = []

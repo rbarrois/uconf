@@ -111,7 +111,7 @@ class Config(object):
     def getDstSubdir(self):
         return self.config.get("DEFAULT", 'dstdir')
 
-    # {{{2 Setters
+    # {{{2 Setters (setHost, setDst)
     def setHost(self, hostname):
         self.config.set("DEFAULT", 'hostname', hostname)
         self.__reload()
@@ -131,10 +131,10 @@ class Config(object):
         re_section = re.compile("^\[(\w+)\][ \t]*$")
 
         # Matches a config row : a = X
-        re_cfg_row = re.compile("^[ \t]*(\w+)[ \t]*[=:][ \t]*([^ ].*)$")
+        re_cfg_row = re.compile("^[ \t]*(\._-\w+)[ \t]*[=:][ \t]*([^ ].*)$")
 
         # Matches a cat / file row : (a && b || ! b) and (a or not b) = c d
-        re_cplx_row = re.compile("^[ \t]*([\w!()&| \t]+)[ \t]*[=:][ \t]*([\S \t]+)$")
+        re_cplx_row = re.compile("^[ \t]*([\._\w!()&| \t-]+)[ \t]*[=:][ \t]*([\S \t]+)$")
         with open(configfile) as f:
             for line in f:
                 row = line[:-1]
