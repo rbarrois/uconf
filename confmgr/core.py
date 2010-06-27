@@ -35,7 +35,7 @@ def getHelp(cmd):
 # {{{1 call
 def call(command, args):
     """Wrapper to core.Command(args)"""
-    Command._getCfg(False)
+    Command._getCfg(False) # Prepare config object
     cmdclass = __getCommand(command)
     log.fulldebug("Found command {0}".format(cmdclass.__name__), "Caller")
     cmd = cmdclass()
@@ -57,13 +57,12 @@ class Command(object):
         (self.opts, self.args) = self.__class__.__parse(args)
 
     @staticmethod
-    def _getCfg(findRoot = True):
+    def _getCfg(initconfig = True):
         """Loads the config, trying to find the correct repo root"""
         cfg = config.getConfig()
-        if findRoot:
+        if initconfig and not cfg.finalized:
             cfg.setRoot(cfg.findRoot())
-            if not cfg.finalized:
-                cfg.finalize()
+            cfg.finalize()
         return cfg
 
     @classmethod
@@ -108,9 +107,10 @@ class Command(object):
 
     @classmethod
     def applyToFiles(cls, callback, files = None):
-        cfg = cls._getCfg(False)
+        cfg = cls._getCfg()
         if files is None:
             files = cfg.files
+        log.fulldebug("Applying {c} to {f}".format(c = cls.__name__, f = repr(files)))
         for filename in files:
             if filename not in cfg.filerules:
                 log.warn("No rules given for file {0}, ignoring.".format(filename))
@@ -273,7 +273,7 @@ class cmdExport(Command):
         cfg.setHost(target_host)
         cfg.setDst(exportdir)
         log.debug("Ready to export files for {0}".format(target_host), "cmdExport")
-        cmdBuild.build([], initconfig = False)
+        cmdBuild.build([])
 
 # {{{2 cmdBuild
 class cmdBuild(Command):
@@ -286,9 +286,9 @@ class cmdBuild(Command):
         self.build(self.args)
 
     @classmethod
-    def build(cls, files = [], initconfig = True):
+    def build(cls, files = []):
         """Actually asks for building all files, or only those given as argument"""
-        cfg = cls._getCfg(initconfig)
+        cfg = cls._getCfg()
 
         # Load files given as arguments
         _files = []

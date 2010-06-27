@@ -32,13 +32,7 @@ class Config(object):
         # get defaults
         self.config = self.getDefaults()
         self.config.read([systemConfig, os.path.expanduser(userConfig)])
-        # initialize data
-        self.cats = set([])
-        self.files = set([])
-        self.__cats = []
-        self.__files = []
-        self.filerules = dict()
-        self.finalized = False
+        self.unfinalize()
 
     # {{{2 get, getDefaults
     def get(self, section, var):
@@ -84,6 +78,11 @@ class Config(object):
 
     def setRoot(self, root):
         """Stores the path of the root of the current repo (if it exists)"""
+        # If switching to current root
+        if root == self.config.get("DEFAULT", "root"):
+            return
+        self.unfinalize()
+
         if os.path.exists(root):
             self.config.set("DEFAULT", "root", root)
         else:
@@ -131,26 +130,29 @@ class Config(object):
         re_section = re.compile("^\[(\w+)\][ \t]*$")
 
         # Matches a config row : a = X
-        re_cfg_row = re.compile("^[ \t]*(\._-\w+)[ \t]*[=:][ \t]*([^ ].*)$")
+        re_cfg_row = re.compile("^[ \t]*([._\w-]+)[ \t]*[=:][ \t]*([^ ].*)$")
 
         # Matches a cat / file row : (a && b || ! b) and (a or not b) = c d
-        re_cplx_row = re.compile("^[ \t]*([\._\w!()&| \t-]+)[ \t]*[=:][ \t]*([\S \t]+)$")
+        re_cplx_row = re.compile("^[ \t]*([._\w!()&| \t-]+)[ \t]*[=:][ \t]*([\S \t]+)$")
         with open(configfile) as f:
             for line in f:
                 row = line[:-1]
                 m = re_section.match(row)
                 if m is not None:
                     section = m.group(1)
+                    log.fulldebug("Switching to section {0}".format(section), "Config/readRepoConfig")
                 else:
                     if section.upper() == "DEFAULT":
                         m = re_cfg_row.match(row)
                         if m is not None:
                             (key, val) = m.groups()
                             self.config.set("DEFAULT", key, val)
+                            log.fulldebug("Got key/pair '{k}' :: '{v}'".format(k = key, v = val), "Config/readRepoConfig")
                     else:
                         m = re_cplx_row.match(row)
                         if m is not None:
                             (pre, post) = m.groups()
+                            log.fulldebug("Got pre/post '{pre}' :: '{post}'".format(pre = pre, post = post), "Config/readRepoConfig")
                             if section.lower() in ("categories", "cats", "category"):
                                 self.__cats.append((pre.strip(), post.strip()))
                             elif section.lower() in ("files", "file"):
@@ -185,8 +187,21 @@ class Config(object):
             self.readRepoConfig()
         self.__reload()
 
+    # {{{2 unfinalize
+    def unfinalize(self):
+        """Used to reset all internal data (just before reading the config from a file)"""
+
+        # initialize data
+        self.cats = set([])
+        self.files = set([])
+        self.__cats = []
+        self.__files = []
+        self.filerules = dict()
+        self.finalized = False
+
     # {{{2 __reload
     def __reload(self):
+        """(re)generates list of current cats/files/rules accoding to current hostname"""
         self.__loadCats()
         self.__loadFiles()
         self.__loadRules()
@@ -297,7 +312,7 @@ class Config(object):
 class CatExpandRule(object):
     """Holds a 'category' rule"""
 
-    re_spl_pre = re.compile("^[\w \t]+$")
+    re_spl_pre = re.compile("^[\w \t_.-]+$")
     def __init__(self, pre, post):
         """Parses a pre and post pair to build the rule"""
         self.simple = False
