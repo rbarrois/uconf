@@ -11,5 +11,5 @@ setup(name = 'confmgr',
         url = "http://confmgr.xelnor.net/",
         packages = ['confmgr'],
         requires = ['os', 're', 'difflib', 'hashlib', 'subprocess', 'optparse', 'shutils', 'ConfigParser'],
-        scripts = ['bin/confmgr'],
+        scripts = ['bin/confmgr', 'bin/install-bin', 'bin/confmgr-bin'],
         )
