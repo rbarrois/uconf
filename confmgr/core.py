@@ -1,6 +1,8 @@
 #!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
 
+from __future__ import with_statement
+
 import sys
 import os
 import optparse
