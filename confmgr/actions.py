@@ -1,7 +1,5 @@
-#!/usr/bin/env python2.5
+#!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
-
-from __future__ import with_statement
 
 # Global imports
 import os
