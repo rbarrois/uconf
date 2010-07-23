@@ -1,6 +1,8 @@
 #!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
 
+from __future__ import with_statement
+
 import sys
 import os
 import optparse
@@ -17,10 +19,10 @@ import misc
 version = '@VERSION@'
 
 def getVersion():
-    return """Confmgr {v}
+    return """Confmgr %s
 Copyright (C) 2009-2010 XelNet
 
-Written by Raphaël Barrois (Xelnor).\n""".format(v = version)
+Written by Raphaël Barrois (Xelnor).\n""" % version
 
 # {{{1 getHelp
 def getHelp(cmd):
@@ -37,7 +39,7 @@ def call(command, args):
     """Wrapper to core.Command(args)"""
     Command._getCfg(False) # Prepare config object
     cmdclass = __getCommand(command)
-    log.fulldebug("Found command {0}".format(cmdclass.__name__), "Caller")
+    log.fulldebug("Found command %s" % cmdclass.__name__, "Caller")
     cmd = cmdclass()
     cmd.loadArgs(args)
     return cmd.apply()
@@ -110,10 +112,10 @@ class Command(object):
         cfg = cls._getCfg()
         if files is None:
             files = cfg.files
-        log.fulldebug("Applying {c} to {f}".format(c = cls.__name__, f = repr(files)))
+        log.fulldebug("Applying %s to %s" % (cls.__name__, repr(files)))
         for filename in files:
             if filename not in cfg.filerules:
-                log.warn("No rules given for file {0}, ignoring.".format(filename))
+                log.warn("No rules given for file %s, ignoring." % filename)
             else:
                 rule = cfg.filerules[filename]
                 callback(rule)
@@ -145,14 +147,14 @@ class cmdInit(Command):
         conf = os.path.join(root, "config")
         if not os.path.exists(conf):
             skel = """[default]
-install_root = {i}
+install_root = %s
 
 [cats]
-{h} = all
+%s = all
 
 [files]
 
-""".format(i = install_root, h = hostname)
+""" % (install_root, hostname)
             with open(conf, 'w') as f:
                 f.write(skel)
 
@@ -187,10 +189,10 @@ class cmdImport(Command):
         folder = os.path.normpath(self.opts.folder)
 
         if not misc.isSubdir(folder, cfg.getSrc()):
-            log.crit("Error : the target folder must be within the '{0}' folder of repo (given : {1})".format(cfg.getSrcSubdir(), folder))
+            log.crit("Error : the target folder must be within the '%s' folder of repo (given : %s)" % (cfg.getSrcSubdir(), folder))
             sys.exit(1)
         folder = os.path.relpath(os.path.join(src_path, folder), src_path)
-        log.info("Adding files to the {rel} folder ({abs})".format(rel = folder, abs = os.path.join(src_path, folder)))
+        log.info("Adding files to the %s folder (%s)" % (folder, os.path.join(src_path, folder)))
 
         cat = self.opts.cat
         for f in self.args:
@@ -205,11 +207,11 @@ class cmdImport(Command):
         absfolder = os.path.join(src_path, folder)
 
         if not os.path.exists(absfolder):
-            log.notice("Creating the {0} folder".format(absfolder))
+            log.notice("Creating the %s folder" % absfolder)
             os.makedirs(absfolder)
 
         if not os.path.isdir(absfolder):
-            log.crit("Unable to create {0}, skipping file.".format(absfolder))
+            log.crit("Unable to create %s, skipping file." % absfolder)
 
         pathfile = os.path.join(absfolder, '__paths')
         files = []
@@ -218,18 +220,18 @@ class cmdImport(Command):
         is_folder = (os.path.basename(path) == '' or os.path.isdir(abspath))
         if is_folder:
             # Folder
-            log.debug("Importing folder {0}".format(abspath), module="Import")
+            log.debug("Importing folder %s" % abspath, module="Import")
             if not os.path.exists(abspath):
-                log.warn("Folder {0} doesn't exist, skipping.".format(abspath))
+                log.warn("Folder %s doesn't exist, skipping." % abspath)
                 return
             fnd = subprocess.Popen(["find", abspath, "-type", "f"], stdout = subprocess.PIPE).communicate()[0]
             for row in fnd.split():
                 files.append((os.path.relpath(row, abspath), row))
         else:
             # Regular file
-            log.debug("Importing file {0}".format(abspath), module="Import")
+            log.debug("Importing file %s" % abspath, module="Import")
             if not os.path.exists(abspath):
-                log.warn("File {0} doesn't exist, I won't copy it into the 'src' folder.".format(abspath))
+                log.warn("File %s doesn't exist, I won't copy it into the 'src' folder." % abspath)
             files = [(os.path.basename(path), abspath)]
 
         files.sort()
@@ -237,8 +239,8 @@ class cmdImport(Command):
         with open(pathfile, 'a') as f:
             for (filename, install_file) in files:
                 relp = os.path.relpath(install_file, install_root)
-                log.info("Adding file {0}".format(filename), module="Import")
-                f.write("{src} {to}\n".format(src = filename, to = relp))
+                log.info("Adding file %s" % filename, module="Import")
+                f.write("%s %s\n" % (filename, relp))
                 if os.path.exists(install_file):
                     dirname = os.path.dirname(filename)
                     absdirname = os.path.join(absfolder, dirname)
@@ -246,7 +248,7 @@ class cmdImport(Command):
                         os.makedirs(absdirname)
                     shutil.copy(install_file, os.path.join(absfolder, filename))
         with open(os.path.join(repo_root, "config"), 'a') as g:
-            g.write("{cat}: {files}\n".format(cat = cat, files = ' '.join([os.path.join(folder,filename) for (filename, install_file) in files])))
+            g.write("%s: %s\n" % (cat, ' '.join([os.path.join(folder,filename) for (filename, install_file) in files])))
 
 # {{{2 cmdExport
 class cmdExport(Command):
@@ -272,7 +274,7 @@ class cmdExport(Command):
 
         cfg.setHost(target_host)
         cfg.setDst(exportdir)
-        log.debug("Ready to export files for {0}".format(target_host), "cmdExport")
+        log.debug("Ready to export files for %s" % target_host, "cmdExport")
         cmdBuild.build([])
 
 # {{{2 cmdBuild
@@ -300,7 +302,7 @@ class cmdBuild(Command):
                     if (parts[0] == cfg.getSrcSubdir() or parts[0] == cfg.getDstSubdir()) and '/'.join(parts[1:]) in cfg.files:
                         _files.append('/'.join(parts[1:]))
                     else:
-                        log.warn("No configuration for file {0}, ignoring.".format(filename))
+                        log.warn("No configuration for file %s, ignoring." % filename)
                 else:
                     _files.append(filename)
         else:
@@ -360,7 +362,7 @@ def __loadCommands(dir):
         if item[:3] == "cmd":
             cmd = item[3:].lower()
             res[cmd] = eval(item)
-    log.fulldebug("Available commands are : {0}".format(repr(res)), "Core")
+    log.fulldebug("Available commands are : %s" % repr(res), "Core")
     return res
 
 # {{{2 __getCommand
@@ -368,7 +370,7 @@ def __getCommand(command):
     if command in __commands:
         return __commands[command]
     else:
-        log.crit("Unknown command {0}.".format(command), "Core")
+        log.crit("Unknown command %s." % command, "Core")
         exit(1)
 
 __commands = __loadCommands(dir())

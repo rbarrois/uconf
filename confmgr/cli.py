@@ -25,27 +25,26 @@ def parse(argv):
     for mod in mods:
         max_mod_len = max(max_mod_len, len(mod))
     cmds_list = '\n'.join(
-            "  {cmd}\t{help}".format(
-                cmd = str.ljust(cmd, max_mod_len),
-                help = cmds[cmd])
+            "  %s\t%s" % (
+                str.ljust(cmd, max_mod_len),
+                cmds[cmd])
             for cmd in mods)
 
-    short_help = """Usage: {prog} command [options] [args]
+    short_help = """Usage: %s command [options] [args]
 
 Global options :
   -V, --version  Print version information and exit
   -h, --help     Print this help message and exit
   -v, --verbose  Increase verbosity (several uses increase verbosity level)
-  -q, --quiet    Decrease verbosity (several uses decrease verbosity level)\n""".format(
-          prog=os.path.basename(sys.argv[0]) )
+  -q, --quiet    Decrease verbosity (several uses decrease verbosity level)\n""" % os.path.basename(sys.argv[0])
 
-    full_help = """{short}\nThe list of options and arguments for a command can be accessed through :
-    {prog} help <command>
+    full_help = """%s\nThe list of options and arguments for a command can be accessed through :
+    %s help <command>
 
-    {cmds}\n""".format(
-        short = short_help,
-        prog = os.path.basename(sys.argv[0]),
-        cmds = cmds_list)
+    %s\n""" % (
+        short_help,
+        os.path.basename(sys.argv[0]),
+        cmds_list)
 
     if len(argv) > 0:
         if argv[0] in ('--version', '-version', 'version', '-V'):
@@ -55,10 +54,10 @@ Global options :
             if len(argv) > 1:
                 if argv[1] in core.modules:
                     sys.stdout.write(short_help)
-                    sys.stdout.write("----------\nHelp for ``{module}'' :\n\n".format(module=argv[1]))
+                    sys.stdout.write("----------\nHelp for ``%s'' :\n\n" % argv[1])
                     core.call(argv[1], ['-h'] + argv[2:])
                 else:
-                    sys.stdout.write("Unknown command {0}\n\n".format(argv[1]))
+                    sys.stdout.write("Unknown command %s\n\n" % argv[1])
                     sys.stdout.write(short_help)
             else:
                 sys.stdout.write(full_help)
@@ -67,6 +66,6 @@ Global options :
             core.call(argv[0], argv[1:])
         else:
             if len(argv) > 1:
-                sys.stdout.write("Unknown command {0}\n\n".format(argv[1]))
+                sys.stdout.write("Unknown command %s\n\n" % argv[1])
             sys.stdout.write(short_help)
             sys.exit(1)

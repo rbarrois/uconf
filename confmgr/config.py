@@ -1,6 +1,8 @@
 #!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
 
+from __future__ import with_statement
+
 # Global imports
 import ConfigParser
 import os
@@ -22,6 +24,45 @@ def getConfig():
         log.fulldebug("Initializing config.", module="Config")
         conf = Config()
     return conf
+
+def _splitpath(path):
+    """Splits a path into its elemantary components"""
+    (l, r) = os.path.split(path)
+    if r == "":
+        return [l]
+    else:
+        s = _splitpath(l)
+        s.append(r)
+        return s
+
+def _relpath(path, start = os.curdir):
+    """Simulates os.path.relpath for python 2.5
+
+    Args:
+        path: The path to be relativized
+        start: The path to which we want to get relative path
+
+    Returns:
+        The relative path, such as os.path.join(start, @return) = path
+    """
+    abs_start = os.path.abspath(start)
+    abs_rel = os.path.abspath(path)
+    s_start = _splitpath(abs_start)
+    s_rel = _splitpath(abs_rel)
+    rel = []
+    i = 0
+    while i < len(s_rel) and i < len(s_start):
+        if s_start[i] != s_rel[i]:
+            break
+        i += 1
+    rel = [ '..' for p in s_start[i:]] + s_rel[i:]
+    if rel == []:
+        return ''
+    else:
+        return os.path.join(*rel)
+
+if 'relpath' not in os.path.__all__:
+    os.path.relpath = _relpath
 
 # {{{1 class Config
 class Config(object):
@@ -66,12 +107,12 @@ class Config(object):
         while path != "":
             if os.path.isdir(path):
                 if "config" in os.listdir(path):
-                    log.debug("Found repo root at {0}".format(path), "Config/FindRoot")
+                    log.debug("Found repo root at %s" % path, "Config/FindRoot")
                     return path
                 else:
                     path = os.path.dirname(path)
             else:
-                log.crit("Incorrect path : {0} is not a dir".format(path), "Config/FindRoot")
+                log.crit("Incorrect path : %s is not a dir" % path, "Config/FindRoot")
                 exit(1)
         log.crit("Unable to find repo root", "Config")
         exit(1)
@@ -86,7 +127,7 @@ class Config(object):
         if os.path.exists(root):
             self.config.set("DEFAULT", "root", root)
         else:
-            log.crit("Can't set repo root to non existent path {0}".format(root), "Config")
+            log.crit("Can't set repo root to non existent path %s" % root, "Config")
             exit(1)
         if os.path.exists(root + "/config") and os.access(root + "/config", os.R_OK):
             self.readRepoConfig(root + "/config")
@@ -123,7 +164,7 @@ class Config(object):
         if configfile is None:
             configfile = self.getRoot() + "/config"
 
-        log.debug("Reading repo config from {0}".format(configfile), module="Config")
+        log.debug("Reading repo config from %s" % configfile, module="Config")
         section = "DEFAULT"
 
         # Matches a section header
@@ -140,19 +181,19 @@ class Config(object):
                 m = re_section.match(row)
                 if m is not None:
                     section = m.group(1)
-                    log.fulldebug("Switching to section {0}".format(section), "Config/readRepoConfig")
+                    log.fulldebug("Switching to section %s" % section, "Config/readRepoConfig")
                 else:
                     if section.upper() == "DEFAULT":
                         m = re_cfg_row.match(row)
                         if m is not None:
                             (key, val) = m.groups()
                             self.config.set("DEFAULT", key, val)
-                            log.fulldebug("Got key/pair '{k}' :: '{v}'".format(k = key, v = val), "Config/readRepoConfig")
+                            log.fulldebug("Got key/pair '%s' :: '%s'" % (key, val), "Config/readRepoConfig")
                     else:
                         m = re_cplx_row.match(row)
                         if m is not None:
                             (pre, post) = m.groups()
-                            log.fulldebug("Got pre/post '{pre}' :: '{post}'".format(pre = pre, post = post), "Config/readRepoConfig")
+                            log.fulldebug("Got pre/post '%s' :: '%s'" % (pre, post), "Config/readRepoConfig")
                             if section.lower() in ("categories", "cats", "category"):
                                 self.__cats.append((pre.strip(), post.strip()))
                             elif section.lower() in ("files", "file"):
@@ -286,7 +327,7 @@ class Config(object):
                                 commands.append(cur)
                             cur = row
                         else:
-                            log.warn("Erroneous row {row} in {file}.".format(row=row, file=path_file), "Config/PathFiles")
+                            log.warn("Erroneous row %s in %s." % (row, path_file), "Config/PathFiles")
                     if re_keep_going_row.match(row) is not None:
                         # Strip the '\' at the end of cur
                         cur = cur[:-1]
@@ -299,7 +340,7 @@ class Config(object):
         for command in commands:
             parts = misc.filenameSplit(command, 3)
             if len(parts) < 2:
-                log.warn("Too short line : {0}".format(command), "Config/PathFiles")
+                log.warn("Too short line : %s" % command, "Config/PathFiles")
                 continue
             filename = os.path.join(subdir, parts[0])
             target = parts[1]

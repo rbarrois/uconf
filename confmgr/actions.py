@@ -1,6 +1,8 @@
 #!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
 
+from __future__ import with_statement
+
 # Global imports
 import os
 import re
@@ -59,15 +61,15 @@ def parse_file(src):
         else:
             row = line
         if re_comment.match(row) is not None:
-            log.debug("Encountered comment : {0}".format(row), "FileParser")
+            log.debug("Encountered comment : %s" % row, "FileParser")
             yield (False, '', line)
         elif write and re_escaped.match(row) is not None:
-            log.debug("Escaping row : {0}".format(row), "FileParser")
+            log.debug("Escaping row : %s" % row, "FileParser")
             yield (True, row[:2] + row[3:] + "\n", line)
         elif re_command.match(row) is not None:
             parts = row[2:].split(' ', 1)
             command = parts[0]
-            log.debug("Encountered command {0}".format(command), "FileParser")
+            log.debug("Encountered command %s" % command, "FileParser")
             if command == "end" and in_block:
                 write = True
                 in_block = False
@@ -76,13 +78,13 @@ def parse_file(src):
                 rule = misc.parse_cplx_pre(parts[1])
                 if rule.apply(cats):
                     write = True
-                    log.debug("Rule {0} has matched.".format(parts[1]), "FileParser")
+                    log.debug("Rule %s has matched." % parts[1], "FileParser")
                 else:
                     write = False
-                    log.debug("Rule {0} didn't match.".format(parts[1]), "FileParser")
+                    log.debug("Rule %s didn't match." % parts[1], "FileParser")
             elif in_block and command == "else":
                 write = not write
-                log.debug("Switching writing to {0}".format(write), "FileParser")
+                log.debug("Switching writing to %s" % write, "FileParser")
             yield(False, '', line)
         elif write:
             yield (True, line, line)
@@ -244,7 +246,7 @@ class stdBuildAction(Action):
     """Default building of a file"""
 
     def apply(self, src, dst, *params):
-        log.comment("Building {src} to {dst}".format(src = src, dst = dst))
+        log.comment("Building %s to %s" % (src, dst))
         with open(dst, 'w') as g:
             with open(src, 'r') as f:
                 for line in get_output(f):
@@ -310,11 +312,11 @@ class stdInstallAction(Action):
     """Default installation of a file"""
 
     def apply(self, src, dst, *params):
-        log.comment("Installing {src} on {dst}".format(src = src, dst = dst))
+        log.comment("Installing %s on %s" % (src, dst))
         dst_dir = os.path.dirname(dst)
         if not os.path.exists(dst_dir):
             dst_dir = os.path.dirname(dst)
-            log.comment("Folder {0} doesn't exist, creating".format(dst_dir))
+            log.comment("Folder %s doesn't exist, creating" % dst_dir)
             os.makedirs(dst_dir)
         (dstname, copied) = f_util.copy_file(src, dst, preserve_mode = True, preserve_times = True, update = True)
         if copied:
@@ -335,7 +337,7 @@ class stdCopyLinkAction(Action):
     """Copies a link (i.e if a->b is copied to c->b)"""
 
     def apply(self, src, dst, *params):
-        log.comment("Replicating symlink {src} to {dst}".format(src = src, dst = dst))
+        log.comment("Replicating symlink %s to %s" % (src, dst))
         tgt = os.readlink(src)
         if os.path.exists(dst):
             os.unlink(dst)
@@ -347,11 +349,11 @@ class stdRetrieveAction(Action):
     """Retrieves an installed file"""
 
     def apply(self, src, dst, *params):
-        log.debug("Retrieving {dst} from {src}".format(src = src, dst = dst))
+        log.debug("Retrieving %s from %s" % (dst, src))
         dst_dir = os.path.dirname(dst)
         if not os.path.exists(dst_dir):
             dst_dir = os.path.dirname(dst)
-            log.comment("Folder {0} doesn't exist, creating".format(dst_dir))
+            log.comment("Folder %s doesn't exist, creating" % dst_dir)
             os.makedirs(dst_dir)
         f_util.copy_file(src, dst, update = False)
         return ActionResult(success = True)
@@ -361,7 +363,7 @@ class stdLinkAction(Action):
     """Links dst to src"""
 
     def apply(self, src, dst, *params):
-        log.comment("Linking {dst} to {src}".format(src = src, dst = dst))
+        log.comment("Linking %s to %s" % (dst, src))
         os.symlink(src, dst)
         return ActionResult(True)
 
@@ -370,7 +372,7 @@ class stdEmptyAction(Action):
     """Does nothing"""
 
     def apply(self, src, dst, *params):
-        return ActionResult(True, "Nothing done for {src} to {dst}".format(src = src, dst = dst))
+        return ActionResult(True, "Nothing done for %s to %s" % (src, dst))
 
 # {{{2 stdDiffAction
 class stdDiffAction(Action):
@@ -379,7 +381,7 @@ class stdDiffAction(Action):
     def apply(self, src, dst, *params):
         diff = subprocess.Popen(["diff", "-Nur", src, dst], stdout=subprocess.PIPE).communicate()[0]
         if len(diff) > 0:
-            log.display("vimdiff {src} {dst}".format(src = src, dst = dst))
+            log.display("vimdiff %s %s" % (src, dst))
             [log.display(row) for row in diff.splitlines()]
         return ActionResult(success = len(diff) == 0)
 
@@ -396,7 +398,7 @@ class stdCheckAction(Action):
         with open(src, 'r') as f:
             orig = [line for line in get_output(f)]
         if not os.path.exists(dst):
-            return ActionResult(success = False, msg = "File {0} hasn't be compiled, please run 'build'".format(dst))
+            return ActionResult(success = False, msg = "File %s hasn't be compiled, please run 'build'" % dst)
 
         with open(dst, 'r') as f:
             dest = [line for line in f]
@@ -407,14 +409,14 @@ class stdCheckAction(Action):
         md5_orig = getHash(orig)
         md5_dest = getHash(dest)
         if md5_orig != md5_dest:
-            msgs.append("Found diff between {src} and compiled version {dst}.".format(src = src, dst = dst))
+            msgs.append("Found diff between %s and compiled version %s." % (src, dst))
             same = False
 
-        log.fulldebug("Calling diff {dst} {prod}".format(dst = dst, prod = installed), "Actions/Check")
+        log.fulldebug("Calling diff %s %s" % (dst, installed), "Actions/Check")
         DEVNULL = open('/dev/null', 'w')
         retcode = subprocess.call(["diff", dst, installed], stdout = DEVNULL, stderr = DEVNULL)
         if retcode != 0:
-            msgs.append("Found diff between {dst} and installed version {prod}.".format(dst = dst, prod = installed))
+            msgs.append("Found diff between %s and installed version %s." % (dst, installed))
             same = False
         if same:
             return ActionResult(success = True)
@@ -439,10 +441,10 @@ class customPreinstallAction(Action):
         self.cmd = cmd
 
     def apply(self, src, dst, *params):
-        log.info("Pre-install ({dst}) : running {cmd}".format(dst = dst, cmd = self.cmd), with_success = True)
+        log.info("Pre-install (%s) : running %s" % (dst, self.cmd), with_success = True)
         ret = subprocess.call(self.cmd)
         if ret != 0:
-            log.warn("Error : pre-install action for {dst} exited with code {ret}".format(dst = dst, ret = ret), "Actions/custom_preinstall")
+            log.warn("Error : pre-install action for %s exited with code %d" % (dst, ret), "Actions/custom_preinstall")
             log.fail()
         else:
             log.success()
@@ -454,10 +456,10 @@ class customPostinstallAction(Action):
         self.cmd = cmd
 
     def apply(self, src, dst, *params):
-        log.info("Post-install ({dst}) : running {cmd}".format(dst = dst, cmd = self.cmd), with_success = True)
+        log.info("Post-install (%s) : running %s" % (dst, self.cmd), with_success = True)
         ret = subprocess.call(self.cmd)
         if ret != 0:
-            log.warn("Error : post-install action for {dst} exited with code {ret}".format(dst = dst, ret = ret), "Actions/custom_postinstall")
+            log.warn("Error : post-install action for %s exited with code %d" % (dst, ret), "Actions/custom_postinstall")
             log.fail()
         else:
             log.success()
