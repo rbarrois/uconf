@@ -378,7 +378,7 @@ class CatExpandRule(object):
 
 # {{{1 class FileExpandRule
 class FileExpandRule(object):
-    re_spl_pre = re.compile("^[\w \t]+$")
+    re_spl_pre = re.compile("^[\w \t_.-]+$")
 
     def __init__(self, pre, post):
         self.simple = False
