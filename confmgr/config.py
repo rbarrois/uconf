@@ -260,7 +260,11 @@ class Config(object):
             hostname = self.config.get("DEFAULT", "hostname")
         else:
             hostname = subprocess.Popen(["hostname", "-s"], stdout=subprocess.PIPE).communicate()[0][:-1]
-        self.cats = self.cats | set([hostname])
+        if self.config.has_option("DEFAULT", "hostname_full"):
+            hostname_full = self.config.get("DEFAULT", "hostname_full")
+        else:
+            hostname_full = subprocess.Popen(["hostname"], stdout=subprocess.PIPE).communicate()[0][:-1]
+        self.cats = self.cats | set([hostname, hostname_full])
 
         # Read rules and apply them
         rules = []
