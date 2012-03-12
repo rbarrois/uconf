@@ -4,9 +4,6 @@ PURPOSE: confmgr is a tool to manage config, generating that required for the lo
 
 FILES: A confmgr 'repo' is a simple folder containing :
     - A 'config' file, which describes how the repo is to be handled (root install path, ...)
-    - A 'cats' file, which says to which categories an host belongs
-    - A 'files' file, describing which folders belong to which category
-    - A 'files.local', version of the previous adapted to the local host
     - A 'src' folder, which holds the versioned, raw version of files
     - A 'dst' folder, which holds the local, built version of files
     
@@ -34,13 +31,6 @@ FORMATS: There are basically 5 kinds of files :
         - [hosts] : rows hostname = cats : host hostname belongs to categories cats
         - [meta] : rows meta_cat = sub_cats : category 'meta_cat' is to be expansed into the list of categories in sub_cats ; they are added after hosts cats, and expansed in the order of the list
         - [conditional] : rows cond_cat = conditions : category 'cond_cat' is to be added only to hosts matching conditions ; they are added after hosts and meta, and processed in the order of the list ; cond_cat will be added if ( (cats_yes XAND kws) == cats_yes AND (cats_no XAND kws) == 0)
-    - The 'files' file : another ini-style file, with one section per category :
-        [cat] : rows of files
-        everything in the section is taken as a list of paths
-        file names are to be build
-        folder names present mean "the folder and all its subfolders"
-        folder names ending in a '/' mean "the folder and its files, but don't go any deeper"
-    - The 'files.local' file corresponds to the expansion of 'file' according to cats ; it will rebuild if 'files' or 'cats' or 'marker' is newer (for 'marker', see below)
     - The 'config' file : It holds important data ; it is build as an ini file. Defaults are between brackets. Its sections are :
         - [core] : all basic info :
             - 'marker' : relative path to a file or dir which is changed any time the list of files in 'src' has changed ; optional if 'repo_type' is not 'other'
@@ -58,7 +48,7 @@ FORMATS: There are basically 5 kinds of files :
             - 'default_umask' (empty) : umask to use ; by default, keeps current umask
     - The '__paths' files : those files, present in all folders in 'src' (and potentially in each subfolder : for a file in 'files', the '__paths' file of each of its parents folder are checked in order until one containing it is found ; if none exists, confmgr outputs a warning)
         For each file handled, there is :
-        - a row, starting at the first column, with the name of the file, followed by a variable number of spaces / tabs, followed by its relative install path (either a full name or a path ending with a /) ; spaces in the names of those files must be escaped with as '\ ', thus those rows match : 
+        - a row, starting at the first column, with the name of the file, followed by a variable number of spaces / tabs, followed by its relative install path (either a full name or a path ending with a /) ; spaces in the names of those files must be escaped with a backslash, thus those rows match : 
             /^((\\\\)*(\\ +)[^ \t])+[ \t]+([^ \t].*)$/
         - optionally, a row, beginning with a space or a tab, defining a comma-separated list of options :
             - default action to take (install_copy | intall_link | install_custom) : install copies the file, link makes the target a symlink (use only for binaries files or files which are already symlinks), custom tells to use the following command to install the file (on the row starting with 'install:'
