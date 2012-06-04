@@ -12,7 +12,7 @@ class _ConditionNode(object):
 
     def eval(self, atoms):
         """Evaluate this node with a given set of atoms.
-        
+
         Returns a boolean.
         """
         raise NotImplementedError()
@@ -121,7 +121,7 @@ class _AndNode(_MultiNode):
         return all(son.eval(atoms) for son in self.sons)
 
     def __repr__(self):
-        return '<And(%s)>' % self.sons
+        return '<And%r>' % (tuple(self.sons),)
 
 
 class _OrNode(_MultiNode):
@@ -132,7 +132,7 @@ class _OrNode(_MultiNode):
         return any(son.eval(atoms) for son in self.sons)
 
     def __repr__(self):
-        return '<Or(%s)>' % self.sons
+        return '<Or%r>' % (tuple(self.sons),)
 
 
 class _Lexer(object):
