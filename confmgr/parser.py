@@ -5,10 +5,13 @@
 
 import re
 
+from . import topdown_parser
+
+
+# {{{ Nodes
 
 class _ConditionNode(object):
     """Base class for a node."""
-    precedence = 0
 
     def eval(self, atoms):
         """Evaluate this node with a given set of atoms.
@@ -33,6 +36,9 @@ class _FalseNode(_ConditionNode):
     def __repr__(self):
         return '<False>'
 
+    def __str__(self):
+        return 'False'
+
 
 class _TrueNode(_ConditionNode):
     """A 'true' node."""
@@ -41,6 +47,9 @@ class _TrueNode(_ConditionNode):
 
     def __repr__(self):
         return '<True>'
+
+    def __str__(self):
+        return 'True'
 
 
 class _TextNode(_ConditionNode):
@@ -58,6 +67,9 @@ class _TextNode(_ConditionNode):
 
     def __repr__(self):
         return '<%s>' % self.text
+
+    def __str__(self):
+        return self.text
 
 
 class _NegateNode(_ConditionNode):
@@ -81,6 +93,9 @@ class _NegateNode(_ConditionNode):
 
     def __repr__(self):
         return '<Not %s>' % self.son
+
+    def __str__(self):
+        return '! %s' % self.son
 
 
 class _MultiNode(_ConditionNode):
@@ -123,6 +138,11 @@ class _AndNode(_MultiNode):
     def __repr__(self):
         return '<And%r>' % (tuple(self.sons),)
 
+    def __str__(self):
+        return ' && '.join(
+            ('(%s)' % son if isinstance(son, _MultiNode) else str(son))
+            for son in self.sons)
+
 
 class _OrNode(_MultiNode):
     """A 'or' node."""
@@ -134,53 +154,18 @@ class _OrNode(_MultiNode):
     def __repr__(self):
         return '<Or%r>' % (tuple(self.sons),)
 
-
-class _Token(object):
-    """Base class for tokens.
-
-    Ref:
-        http://effbot.org/zone/simple-top-down-parsing.htm
-        http://javascript.crockford.com/tdop/tdop.html
-    """
-
-    # Left binding power
-    # Controls how much this token binds to a token on its right
-    lbp = 0
-
-    def __init__(self, text=None):
-        pass
-
-    def nud(self):
-        """Null denotation.
-
-        Describes what happens to this token when located at the beginning of
-        an expression.
-
-        Returns:
-            _ConditionNode: the node representing this token
-        """
-        raise NotImplementedError()
-
-    def led(self, left, context):
-        """Left denotation.
-
-        Describe what happens to this token when appearing inside a construct
-        (at the left of the rest of the construct).
-
-        Args:
-            context (_Parser): the parser from which 'next' data can be
-                retrieved
-            left (_ConditionNode): the representation of the construct on the
-                left of this token
-
-        Returns:
-            _ConditionNode built from this token, what is on its right, and
-                what was on its left.
-        """
-        raise NotImplementedError()
+    def __str__(self):
+        return ' || '.join(
+            ('(%s)' % son if isinstance(son, _MultiNode) else str(son))
+            for son in self.sons)
 
 
-class _TextToken(_Token):
+# }}}
+# {{{ Tokens
+
+
+class _TextToken(topdown_parser.Token):
+    lbp = 25
 
     def __init__(self, text):
         self.text = text
@@ -188,11 +173,14 @@ class _TextToken(_Token):
     def nud(self, context):
         return _TextNode(self.text)
 
+    def led(self, left, context):
+        return _OrNode([left, _TextNode(self.text)])
+
     def __repr__(self):
         return '<Text: %r>' % self.text
 
 
-class _OrToken(_Token):
+class _OrToken(topdown_parser.Token):
     lbp = 10
 
     def led(self, left, context):
@@ -202,7 +190,7 @@ class _OrToken(_Token):
     def __repr__(self):
         return '<Or>'
 
-class _AndToken(_Token):
+class _AndToken(topdown_parser.Token):
     lbp = 15
 
     def led(self, left, context):
@@ -213,7 +201,7 @@ class _AndToken(_Token):
         return '<And>'
 
 
-class _NotToken(_Token):
+class _NotToken(topdown_parser.Token):
     lbp = 10
 
     def nud(self, context):
@@ -223,74 +211,12 @@ class _NotToken(_Token):
         return '<Not>'
 
 
-class _LeftParen(_Token):
-    def nud(self, context):
-        expr = context.expression()
-        context.advance(expect_class=_RightParen)
-        return expr
+# }}}
+# {{{ Lexer
 
 
-class _RightParen(_Token):
-    pass
-
-
-class _EndToken(_Token):
-    """Marks the end of the input."""
-    lbp = 0
-
-    def __repr__(self):
-        return '<End>'
-
-
-class _Parser(object):
-    """Converts lexed tokens into a _ConditionNode.
-
-    Attributes:
-        tokens (iterable of str): the tokens.
-    """
-
-    def __init__(self, tokens):
-        self.tokens = tokens
-        self.current_token = self.tokens[0]
-        self._cur_token = 0
-
-    def advance(self, expect_class=None):
-        """Retrieve the next token."""
-        if expect_class:
-            assert self.current_token.__class__ == expect_class
-
-        self._cur_token += 1
-        self.current_token = self.tokens[self._cur_token]
-        return self.current_token
-
-    def expression(self, rbp=0):
-        """Extract an expression from the flow of tokens.
-
-        TODO: explain rbp.
-        """
-        prev_token = self.current_token
-        self.advance()
-
-        # Retrieve the _ConditionNode from the previous token situated at the
-        # leftmost point in the expression
-        left = prev_token.nud(context=self)
-
-        while rbp < self.current_token.lbp:
-            # Read incoming tokens with a higher 'left binding power'.
-            # Those are tokens that prefer binding to the left of an expression
-            # than to the right of an expression.
-            prev_token = self.current_token
-            self.advance()
-            left = prev_token.led(left, context=self)
-
-        return left
-
-    def parse(self):
-        return self.expression()
-
-
-class Rule(object):
-    """A rule.
+class RuleLexer(topdown_parser.Lexer):
+    """A rule lexer.
 
     Some possible patterns:
     a b c => Matches if any of a, b, c
@@ -300,65 +226,12 @@ class Rule(object):
     Attributes:
         text (str): the text of the rule
     """
-    ATOM_NAME_RE = re.compile(r'^[a-z._-]+$')
 
-    TOKENS = (
+    TOKENS = topdown_parser.Lexer.TOKENS + (
         (_TextToken, re.compile(r'[a-z._-]+')),
         (_OrToken, re.compile(r'\|\|')),
         (_AndToken, re.compile(r'&&')),
         (_NotToken, re.compile(r'!')),
-        (_LeftParen, re.compile(r'\(')),
-        (_RightParen, re.compile(r'\)')),
     )
 
-    def __init__(self, text, *args, **kwargs):
-        self.text = text
-        super(Rule, self).__init__(*args, **kwargs)
-
-    def _get_token(self, text):
-        """Retrieve the next token from some text.
-
-        Args:
-            text (str): the text from which tokens should be extracted
-
-        Returns:
-            (token_kind, token_text): the token kind and its content.
-        """
-        for (kind, regexp) in self.TOKENS:
-            match = regexp.match(text)
-            if match:
-                return kind, match
-        return None, None
-
-    def _split_tokens(self):
-        """Split self.text into a list of tokens.
-
-        Returns:
-            list of (str, str): the list of (token kind, token text) generated
-                from self.text.
-        """
-        text = self.text
-
-        tokens = []
-
-        while text:
-            kind, match = self._get_token(text)
-            if kind:
-                tokens.append((kind(text[match.start():match.end()])))
-                text = text[match.end():]
-            elif text[0] in (' ', '\t'):
-                text = text[1:]
-            else:
-                raise ValueError('Invalid character %s in %s' % (text[0], text))
-
-        tokens.append(_EndToken())
-        return tokens
-
-    def parse(self):
-        """Parse self.text.
-
-        Returns:
-            _ConditionNode: a node representing the current rule.
-        """
-        parser = _Parser(self._split_tokens())
-        return parser.parse()
+# }}}
