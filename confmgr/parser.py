@@ -135,74 +135,158 @@ class _OrNode(_MultiNode):
         return '<Or%r>' % (tuple(self.sons),)
 
 
-class _Lexer(object):
-    """Converts parsed tokens into a _ConditionNode.
+class _Token(object):
+    """Base class for tokens.
+
+    Ref:
+        http://effbot.org/zone/simple-top-down-parsing.htm
+        http://javascript.crockford.com/tdop/tdop.html
+    """
+
+    # Left binding power
+    # Controls how much this token binds to a token on its right
+    lbp = 0
+
+    def __init__(self, text=None):
+        pass
+
+    def nud(self):
+        """Null denotation.
+
+        Describes what happens to this token when located at the beginning of
+        an expression.
+
+        Returns:
+            _ConditionNode: the node representing this token
+        """
+        raise NotImplementedError()
+
+    def led(self, left, context):
+        """Left denotation.
+
+        Describe what happens to this token when appearing inside a construct
+        (at the left of the rest of the construct).
+
+        Args:
+            context (_Parser): the parser from which 'next' data can be
+                retrieved
+            left (_ConditionNode): the representation of the construct on the
+                left of this token
+
+        Returns:
+            _ConditionNode built from this token, what is on its right, and
+                what was on its left.
+        """
+        raise NotImplementedError()
+
+
+class _TextToken(_Token):
+
+    def __init__(self, text):
+        self.text = text
+
+    def nud(self, context):
+        return _TextNode(self.text)
+
+    def __repr__(self):
+        return '<Text: %r>' % self.text
+
+
+class _OrToken(_Token):
+    lbp = 10
+
+    def led(self, left, context):
+        right = context.expression(self.lbp)
+        return _OrNode([left, right])
+
+    def __repr__(self):
+        return '<Or>'
+
+class _AndToken(_Token):
+    lbp = 15
+
+    def led(self, left, context):
+        right = context.expression(self.lbp)
+        return _AndNode([left, right])
+
+    def __repr__(self):
+        return '<And>'
+
+
+class _NotToken(_Token):
+    lbp = 10
+
+    def nud(self, context):
+        return _NegateNode(context.expression(100))
+
+    def __repr__(self):
+        return '<Not>'
+
+
+class _LeftParen(_Token):
+    def nud(self, context):
+        expr = context.expression()
+        context.advance(expect_class=_RightParen)
+        return expr
+
+
+class _RightParen(_Token):
+    pass
+
+
+class _EndToken(_Token):
+    """Marks the end of the input."""
+    lbp = 0
+
+    def __repr__(self):
+        return '<End>'
+
+
+class _Parser(object):
+    """Converts lexed tokens into a _ConditionNode.
 
     Attributes:
         tokens (iterable of str): the tokens.
     """
 
-    KIND_NOT = 'not'
-    KIND_OR = 'or'
-    KIND_AND = 'and'
-    KIND_NAME = 'name'
-    KIND_LEFT_BRACKET = 'left_bracket'
-    KIND_RIGHT_BRACKET = 'right_bracket'
-
     def __init__(self, tokens):
         self.tokens = tokens
+        self.current_token = self.tokens[0]
+        self._cur_token = 0
 
-    def _lex(self, tokens, prev_node=None):
-        """Lex a set of tokens.
+    def advance(self, expect_class=None):
+        """Retrieve the next token."""
+        if expect_class:
+            assert self.current_token.__class__ == expect_class
 
-        Args:
-            tokens (iterable of tokens): tokens to parse
-            prev_node (_ConditionNode): previously generated node
+        self._cur_token += 1
+        self.current_token = self.tokens[self._cur_token]
+        return self.current_token
 
-        Returns:
-            (_ConditionNode, token list): the next node, and a list of remaining
-                tokens
+    def expression(self, rbp=0):
+        """Extract an expression from the flow of tokens.
+
+        TODO: explain rbp.
         """
-        if not tokens:
-            return prev_node, []
+        prev_token = self.current_token
+        self.advance()
 
-        kind, value = tokens.pop(0)
-        print "Parsing %s/%s, prev=%s" % (kind, value, prev_node)
-        if kind == self.KIND_NOT:
-            next_node, tokens = self._lex(tokens)
-            return _NegateNode(next_node), tokens
-        elif kind == self.KIND_LEFT_BRACKET:
-            return self._lex(tokens, prev_node)
-        elif kind == self.KIND_RIGHT_BRACKET:
-            assert prev_node is not None
-            return prev_node, tokens
-        elif kind == self.KIND_OR:
-            assert prev_node is not None
-            next_node, tokens = self._lex(tokens)
-            return _OrNode([prev_node, next_node]), tokens
-        elif kind == self.KIND_AND:
-            assert prev_node is not None
-            next_node, tokens = self._lex(tokens)
-            return _AndNode([prev_node, next_node]), tokens
-        else:  # KIND_NAME
-            text_node = _TextNode(value)
-            if prev_node:
-                # handling "foo bar"
-                text_node = _OrNode([prev_node, text_node])
-            return self._lex(tokens, text_node)
+        # Retrieve the _ConditionNode from the previous token situated at the
+        # leftmost point in the expression
+        left = prev_token.nud(context=self)
 
-    def lex(self):
-        """Lex the current list of tokens.
+        while rbp < self.current_token.lbp:
+            # Read incoming tokens with a higher 'left binding power'.
+            # Those are tokens that prefer binding to the left of an expression
+            # than to the right of an expression.
+            prev_token = self.current_token
+            self.advance()
+            left = prev_token.led(left, context=self)
 
-        Returns:
-            _ConditionNode: the node representing the expression.
-        """
-        tokens = list(self.tokens)
-        cur_node = None
-        while tokens:
-            print "cur_node=%s, tokens=%s" % (cur_node, tokens)
-            cur_node, tokens = self._lex(tokens, cur_node)
-        return cur_node
+        return left
+
+    def parse(self):
+        return self.expression()
 
 
 class Rule(object):
@@ -218,14 +302,14 @@ class Rule(object):
     """
     ATOM_NAME_RE = re.compile(r'^[a-z._-]+$')
 
-    TOKENS = {
-        'name': re.compile(r'[a-z._-]+'),
-        'or': re.compile(r'\|\|'),
-        'and': re.compile(r'&&'),
-        'not': re.compile(r'!'),
-        'left_bracket': re.compile(r'\('),
-        'right_bracket': re.compile(r'\)'),
-    }
+    TOKENS = (
+        (_TextToken, re.compile(r'[a-z._-]+')),
+        (_OrToken, re.compile(r'\|\|')),
+        (_AndToken, re.compile(r'&&')),
+        (_NotToken, re.compile(r'!')),
+        (_LeftParen, re.compile(r'\(')),
+        (_RightParen, re.compile(r'\)')),
+    )
 
     def __init__(self, text, *args, **kwargs):
         self.text = text
@@ -240,7 +324,7 @@ class Rule(object):
         Returns:
             (token_kind, token_text): the token kind and its content.
         """
-        for (kind, regexp) in self.TOKENS.iteritems():
+        for (kind, regexp) in self.TOKENS:
             match = regexp.match(text)
             if match:
                 return kind, match
@@ -260,12 +344,14 @@ class Rule(object):
         while text:
             kind, match = self._get_token(text)
             if kind:
-                tokens.append((kind, text[match.start():match.end()]))
+                tokens.append((kind(text[match.start():match.end()])))
                 text = text[match.end():]
             elif text[0] in (' ', '\t'):
                 text = text[1:]
             else:
                 raise ValueError('Invalid character %s in %s' % (text[0], text))
+
+        tokens.append(_EndToken())
         return tokens
 
     def parse(self):
@@ -274,5 +360,5 @@ class Rule(object):
         Returns:
             _ConditionNode: a node representing the current rule.
         """
-        lexer = _Lexer(self._split_tokens())
-        return lexer.lex()
+        parser = _Parser(self._split_tokens())
+        return parser.parse()
