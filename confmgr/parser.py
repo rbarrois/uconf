@@ -27,6 +27,12 @@ class _ConditionNode(object):
         """
         return self
 
+    def __eq__(self, other):
+        if not isinstance(other, _ConditionNode):
+            return NotImplemented
+
+        return repr(self.simplify()) == repr(other.simplify())
+
 
 class _FalseNode(_ConditionNode):
     """A 'false' node."""
