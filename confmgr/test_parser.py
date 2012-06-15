@@ -27,7 +27,7 @@ class RuleLexerTestCase(unittest.TestCase):
         )
 
         for rule, expected_node in rules:
-            node = parser.RuleLexer(rule).parse()
+            node = parser.parse_rule(rule)
             self.assertEqual(expected_node, node)
 
 

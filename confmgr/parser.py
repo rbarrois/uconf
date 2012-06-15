@@ -240,4 +240,35 @@ class RuleLexer(topdown_parser.Lexer):
         (_NotToken, re.compile(r'!')),
     )
 
+
+def parse_rule(text):
+    return RuleLexer(text).parse()
+
+# }}}
+# {{{ Rule
+
+class Rule(object):
+    def __init__(self, text):
+        self.text = text
+        self._node = parse_rule(text)
+
+    def test(self, categories):
+        """Test whether a set of categories match this rule.
+
+        Args:
+            categories (str set): categories to test
+
+        Returns:
+            bool
+        """
+        return self._node.eval(categories)
+
+    def __repr__(self):
+        return "Rule(%r)" % self.text
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return self._node == other._node
+
 # }}}
