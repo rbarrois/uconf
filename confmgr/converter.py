@@ -7,15 +7,15 @@ class FileProcessor(object):
 
     Attributes:
         src (str list): lines of the file to process
-        root (str): path to the root of the repository
+        fs (FileSystem): abstraction toward the filesystem
     """
-    def __init__(self, src, root):
+    def __init__(self, src, fs):
         self.src = src
-        self.root = root
+        self.fs = fs
 
     def forward(self, categories):
         """Process the source file with an active list of categories."""
-        generator = Generator(self.src, categories, self.root)
+        generator = Generator(self.src, categories, self.fs)
         for line in generator:
             if line.output is not None:
                 yield line.output
@@ -32,7 +32,7 @@ class FileProcessor(object):
         """
         original_output = list(self.forward)
         diff = Differ(original_output, modified)
-        generator = Generator(self.src, categories, self.root)
+        generator = Generator(self.src, categories, self.fs)
         backporter = Backporter(diff, generator)
 
         for line in backporter:
@@ -160,7 +160,7 @@ class Generator(object):
         in_block (bool): whether the generator is in a block
         in_published_block (bool): whether the current block should be published
         context (str => str dict): maps a placeholder name to its content
-        root (str): the root of the filesystem
+        fs (FileSystem): abstraction to the file system
         _current_lineno (int): the current line number
     """
 
@@ -169,13 +169,13 @@ class Generator(object):
     escaped_re = re.compile(r'^["!#]@@')
     with_args_re = re.compile(r'^(\w+)=(.*)$')
 
-    def __init__(self, src, categories, root='.'):
+    def __init__(self, src, categories, fs):
         self.src = src
         self.categories
         self.in_block = False
         self.in_published_block = True
         self.context = {}
-        self.root = root
+        self.fs = fs
 
         self._current_lineno = 0
 
@@ -228,10 +228,7 @@ class Generator(object):
 
     def read_file(self, filename):
         """Read one line from a file."""
-        # TODO(rbarrois): move to a help method on a filesystem abstraction
-        # layer
-        with open(os.path.join(self.root, filename)) as f:
-            return f.readline().strip()
+        return self.fs.read_one_line(filename)
 
     def handle_command(self, command, args):
         """Handle a "#@<command>" line."""
