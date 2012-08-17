@@ -31,6 +31,47 @@ def with_tempfile(fun):
     return decorated
 
 
+class FileSystemTestCase(unittest.TestCase):
+    """Tests for a 'normal' file system."""
+    def setUp(self):
+        self.fs = fs.FileSystem(root='/')
+
+    @with_tempfile
+    def test_read_line(self, name):
+        with io.open(name, 'wt', encoding='utf8') as f:
+            f.write(u"  Example line\n<blank> \n")
+
+        self.assertEqual(u"Example line", self.fs.read_one_line(name))
+
+    @with_tempfile
+    def test_read_lines(self, name):
+        with io.open(name, 'wt', encoding='utf8') as f:
+            f.write(u"  Example line\n<blank> \n")
+
+        self.assertEqual([
+            u"  Example line",
+            u"<blank> ",
+        ], list(self.fs.readlines(name)))
+
+    @with_tempfile
+    def test_writing(self, name):
+        self.fs.writelines(name, [
+            u"  Example line",
+            u"<blank> \n",
+            u"final.",
+            ])
+
+        with io.open(name, 'rt', encoding='utf8') as f:
+            lines = [line for line in f]
+
+        self.assertEqual([
+            u"  Example line\n",
+            u"<blank> \n",
+            u"\n",
+            u"final.\n",
+        ], lines)
+
+
 class ReadOnlyFSTestCase(unittest.TestCase):
     def setUp(self):
         self.fs = fs.ReadOnlyFS(root='/')
