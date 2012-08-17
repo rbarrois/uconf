@@ -25,8 +25,11 @@ class Token(object):
     # Controls how much this token binds to a token on its right
     lbp = 0
 
-    def __init__(self, text=None):
-        pass
+    def __init__(self, text=''):
+        self.text = text
+
+    def __repr__(self):
+        return "<%s: %r>" % (self.__class__.__name__, self.text)
 
     def nud(self):
         """Null denotation.
@@ -85,7 +88,9 @@ class Parser(object):
     """Converts lexed tokens into their representation.
 
     Attributes:
-        tokens (iterable of str): the tokens.
+        tokens (iterable of Token): the tokens.
+        current_token (Token): the current token
+        _cur_token (int): the index of the current token
     """
 
     def __init__(self, tokens):

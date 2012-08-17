@@ -5,7 +5,7 @@
 
 import re
 
-from . import topdown_parser
+import tdparser
 
 
 # {{{ Nodes
@@ -170,7 +170,7 @@ class _OrNode(_MultiNode):
 # {{{ Tokens
 
 
-class _TextToken(topdown_parser.Token):
+class _TextToken(tdparser.Token):
     lbp = 25
 
     def __init__(self, text):
@@ -186,7 +186,7 @@ class _TextToken(topdown_parser.Token):
         return '<Text: %r>' % self.text
 
 
-class _OrToken(topdown_parser.Token):
+class _OrToken(tdparser.Token):
     lbp = 10
 
     def led(self, left, context):
@@ -196,7 +196,7 @@ class _OrToken(topdown_parser.Token):
     def __repr__(self):
         return '<Or>'
 
-class _AndToken(topdown_parser.Token):
+class _AndToken(tdparser.Token):
     lbp = 15
 
     def led(self, left, context):
@@ -207,7 +207,7 @@ class _AndToken(topdown_parser.Token):
         return '<And>'
 
 
-class _NotToken(topdown_parser.Token):
+class _NotToken(tdparser.Token):
     lbp = 10
 
     def nud(self, context):
@@ -221,7 +221,7 @@ class _NotToken(topdown_parser.Token):
 # {{{ Lexer
 
 
-class RuleLexer(topdown_parser.Lexer):
+class RuleLexer(tdparser.Lexer):
     """A rule lexer.
 
     Some possible patterns:
@@ -233,7 +233,7 @@ class RuleLexer(topdown_parser.Lexer):
         text (str): the text of the rule
     """
 
-    TOKENS = topdown_parser.Lexer.TOKENS + (
+    TOKENS = tdparser.Lexer.TOKENS + (
         (_TextToken, re.compile(r'[a-z._-]+')),
         (_OrToken, re.compile(r'\|\|')),
         (_AndToken, re.compile(r'&&')),

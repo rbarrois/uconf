@@ -10,6 +10,6 @@ setup(name = 'confmgr',
         author_email = "raphael.barrois@xelmail.com",
         url = "http://confmgr.xelnor.net/",
         packages = ['confmgr'],
-        requires = ['os', 're', 'difflib', 'hashlib', 'subprocess', 'optparse', 'shutils', 'ConfigParser'],
+        requires = ['os', 're', 'difflib', 'hashlib', 'subprocess', 'optparse', 'shutils', 'ConfigParser', 'tdparser'],
         scripts = ['bin/confmgr', 'bin/install-bin', 'bin/confmgr-bin'],
         )
