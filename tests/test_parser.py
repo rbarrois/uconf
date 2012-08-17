@@ -3,7 +3,7 @@
 
 import unittest
 
-from . import parser
+from confmgr import parser
 
 class RuleLexerTestCase(unittest.TestCase):
 
