@@ -178,15 +178,18 @@ class Block(object):
         self.context = context or {}
         self.start_line = start_line
 
+    def __repr__(self):
+        return "Block(%r, %d, %r, %r)" % (
+            self.kind,
+            self.start_line,
+            self.published,
+            self.context,
+        )
+
 
 class BlockStack(object):
     def __init__(self):
         self.blocks = []
-
-    def enter(self, *args, **kwargs):
-        block = Block(*args, **kwargs)
-        self.blocks.append(block)
-        return block
 
     def __nonzero__(self):
         return bool(self.blocks)
@@ -201,13 +204,18 @@ class BlockStack(object):
     def published(self):
         return all(b.published for b in self.blocks)
 
-    def get_context(self, key):
+    def get(self, key):
         for block in reversed(self.blocks):
             try:
                 return block.context[key]
             except KeyError:
                 continue
         raise KeyError("Key %s not found in %r" % (key, self))
+
+    def enter(self, *args, **kwargs):
+        block = Block(*args, **kwargs)
+        self.blocks.append(block)
+        return block
 
     def leave(self, kind):
         if not self.blocks:

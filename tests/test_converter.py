@@ -59,6 +59,109 @@ class LineTestCase(unittest.TestCase):
         self.assertEqual('!@@foo', l.original)
 
 
+class BlockStackTestCase(unittest.TestCase):
+    def test_bool_value(self):
+        s = converter.BlockStack()
+        self.assertFalse(s)
+
+        s.enter(converter.Block.KIND_IF, published=True, start_line=1)
+        self.assertTrue(s)
+
+    def test_len(self):
+        s = converter.BlockStack()
+        self.assertEqual(0, len(s))
+
+        s.enter(converter.Block.KIND_IF, published=True, start_line=1)
+        self.assertEqual(1, len(s))
+
+    def test_empty_repr(self):
+        self.assertEqual("<BlockStack: []>", repr(converter.BlockStack()))
+
+    def test_simple_repr(self):
+        s = converter.BlockStack()
+        s.enter(converter.Block.KIND_IF, published=True, start_line=1)
+        self.assertEqual("<BlockStack: [Block('if', 1, True, {})]>", repr(s))
+
+    def test_empty_published(self):
+        s = converter.BlockStack()
+        self.assertTrue(s.published)
+
+    def test_simple_published(self):
+        s = converter.BlockStack()
+        s.enter(converter.Block.KIND_IF, published=True, start_line=1)
+        self.assertTrue(s.published)
+
+    def test_simple_unpublished(self):
+        s = converter.BlockStack()
+        s.enter(converter.Block.KIND_IF, published=False, start_line=1)
+        self.assertFalse(s.published)
+
+    def test_stack_published(self):
+        s = converter.BlockStack()
+        s.enter(converter.Block.KIND_IF, published=True, start_line=1)
+        s.enter(converter.Block.KIND_IF, published=True, start_line=2)
+        s.enter(converter.Block.KIND_IF, published=True, start_line=3)
+        self.assertTrue(s.published)
+
+    def test_stack_unpublished(self):
+        s = converter.BlockStack()
+        s.enter(converter.Block.KIND_IF, published=True, start_line=1)
+        s.enter(converter.Block.KIND_IF, published=False, start_line=2)
+        s.enter(converter.Block.KIND_IF, published=True, start_line=3)
+        self.assertFalse(s.published)
+
+    def test_stack_unpublished_leave(self):
+        s = converter.BlockStack()
+        s.enter(converter.Block.KIND_IF, published=True, start_line=1)
+        s.enter(converter.Block.KIND_IF, published=True, start_line=2)
+        s.enter(converter.Block.KIND_IF, published=False, start_line=3)
+        s.enter(converter.Block.KIND_IF, published=True, start_line=4)
+        self.assertFalse(s.published)
+        s.leave(converter.Block.KIND_IF)
+        self.assertFalse(s.published)
+        s.leave(converter.Block.KIND_IF)
+        self.assertTrue(s.published)
+
+    def test_empty_nolookup(self):
+        s = converter.BlockStack()
+        self.assertRaises(KeyError, s.get, 'foo')
+
+    def test_simple_keyerror(self):
+        s = converter.BlockStack()
+        s.enter(converter.Block.KIND_IF, published=True, start_line=1)
+        self.assertRaises(KeyError, s.get, 'foo')
+
+    def test_simple_lookup(self):
+        s = converter.BlockStack()
+        s.enter(converter.Block.KIND_WITH, context={'bar': 'baz'}, start_line=1)
+        self.assertRaises(KeyError, s.get, 'foo')
+        self.assertEqual('baz', s.get('bar'))
+
+    def test_stack_lookup(self):
+        s = converter.BlockStack()
+        s.enter(converter.Block.KIND_WITH, context={'bar': 1}, start_line=1)
+        s.enter(converter.Block.KIND_WITH, context={'baz': 4}, start_line=2)
+        s.enter(converter.Block.KIND_WITH, context={'bar': 3}, start_line=3)
+        self.assertRaises(KeyError, s.get, 'foo')
+        self.assertEqual(4, s.get('baz'))
+        self.assertEqual(3, s.get('bar'))
+
+    def test_stack_lookup_leave(self):
+        s = converter.BlockStack()
+        s.enter(converter.Block.KIND_WITH, context={'bar': 1}, start_line=1)
+        s.enter(converter.Block.KIND_WITH, context={'baz': 4}, start_line=2)
+        s.enter(converter.Block.KIND_WITH, context={'bar': 3}, start_line=3)
+        self.assertRaises(KeyError, s.get, 'foo')
+        self.assertEqual(4, s.get('baz'))
+        self.assertEqual(3, s.get('bar'))
+        s.leave(converter.Block.KIND_WITH)
+        self.assertEqual(4, s.get('baz'))
+        self.assertEqual(1, s.get('bar'))
+        s.leave(converter.Block.KIND_WITH)
+        self.assertRaises(KeyError, s.get, 'baz')
+        self.assertEqual(1, s.get('bar'))
+
+
 class GeneratorTestCase(unittest.TestCase):
     def test_no_special(self):
         txt = [
