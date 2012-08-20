@@ -1,6 +1,8 @@
 # coding: utf-8
 # Copyright (c) 2010-2012 Raphaël Barrois
 
+import re
+
 
 class FileProcessor(object):
     """Handles 'standard' processing of a file.
@@ -137,18 +139,31 @@ class Line(object):
         self.output = output
         self.original = original
 
+    def __repr__(self):
+        return "Line(%r, %r)" % (self.output, self.original)
+
+    def __hash__(self):
+        return hash((self.output, self.original))
+
+    def __eq__(self, other):
+        if not isinstance(other, Line):
+            return NotImplemented
+        return self.output == other.output and self.original == other.original
+
     def fill_original(self):
         """Fill the 'original' part from the output."""
         if self.original is not None:
             return
 
         # If the output line looks like a comment or command, escape it.
-        hould_escape_re = re.compile(r'^["!#]@')
+        should_escape_re = re.compile(r'^["!#]@')
         if should_escape_re.match(self.output):
             self.original = '%s@%s' % (
                 self.output[:2],
                 self.output[2:],
             )
+        else:
+            self.original = self.output
 
 
 class Generator(object):
