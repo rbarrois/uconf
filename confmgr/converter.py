@@ -186,7 +186,7 @@ class Generator(object):
 
     def __init__(self, src, categories, fs):
         self.src = src
-        self.categories
+        self.categories = categories
         self.in_block = False
         self.in_published_block = True
         self.context = {}
