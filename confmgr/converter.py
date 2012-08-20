@@ -3,6 +3,8 @@
 
 import re
 
+from confmgr import parser
+
 
 class FileProcessor(object):
     """Handles 'standard' processing of a file.
@@ -179,7 +181,7 @@ class Generator(object):
         _current_lineno (int): the current line number
     """
 
-    command_re = re.compile(r'^["!#]@(if|else|elif|endif|with|withfile|endwith)(?: .*)?$')
+    command_re = re.compile(r'^["!#]@(if|else|elif|endif|with|withfile|endwith)(?: (.*))?$')
     comment_re = re.compile(r'^["!#]@#')
     escaped_re = re.compile(r'^["!#]@@')
     with_args_re = re.compile(r'^(\w+)=(.*)$')
@@ -248,7 +250,7 @@ class Generator(object):
     def handle_command(self, command, args):
         """Handle a "#@<command>" line."""
         if command == 'if':
-            rule = parser.parse_rule(args)
+            rule = parser.Rule(args)
             self.in_block = True
             self.in_published_block = rule.test(self.categories)
 
