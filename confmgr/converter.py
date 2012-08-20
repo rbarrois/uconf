@@ -168,6 +168,23 @@ class Line(object):
             self.original = self.output
 
 
+class _Block(object):
+    KIND_IF = 'if'
+    KIND_WITH = 'with'
+
+    def __init__(self, kind, published, start_line):
+        self.kind = kind
+        self.published = published
+        self.start_line = start_line
+
+    @property
+    def closing_command(self):
+        if self.kind == self.KIND_IF:
+            return 'endif'
+        elif self.kind == self.KIND_WITH:
+            return 'endwith'
+
+
 class Generator(object):
     """Generate the output from a source.
 
@@ -189,11 +206,9 @@ class Generator(object):
     def __init__(self, src, categories, fs):
         self.src = src
         self.categories = categories
-        self.in_block = False
-        self.in_published_block = True
+        self.block_stack = []
         self.context = {}
         self.fs = fs
-
         self._current_lineno = 0
 
     def __iter__(self):
@@ -226,15 +241,35 @@ class Generator(object):
             else:
                 yield Line(None, line)
 
+    @property
+    def in_published_block(self):
+        return all(b.published for b in self.block_stack)
+
     def invalid(self, message, *args):
         """Generate a contextualized error message."""
         error = "Error on line %d: " % self._current_lineno
         raise ValueError(error + message % args)
 
-    def assert_in_block(self, command):
+    def assert_in_block(self, command, kind):
         """Enforce "command within a block"."""
-        if not self.in_block:
+        if not self.block_stack:
             self.invalid("Invalid command '%s' outside a block", command)
+        current_block = self.block_stack[-1]
+        if current_block.kind != kind:
+            self.invalid("Invalid command '%s' in %r block.", command,
+                current_block.kind)
+
+    def enter_block(self, kind, published):
+        block = _Block(
+            kind=kind,
+            published=published,
+            start_line=self._current_lineno,
+        )
+        self.block_stack.append(block)
+        return block
+
+    def leave_block(self):
+        return self.block.pop()
 
     def parse_with_args(self, args):
         """Parce "#@with" arguments (and validate the line structure)."""
@@ -251,28 +286,28 @@ class Generator(object):
         """Handle a "#@<command>" line."""
         if command == 'if':
             rule = parser.Rule(args)
-            self.in_block = True
-            self.in_published_block = rule.test(self.categories)
+            self.enter_block(_Block.KIND_IF, rule.test(self.categories))
 
         elif command == 'else':
-            self.assert_in_block(command)
-
-            self.in_published_block = not self.in_published_block
+            self.assert_in_block(command, _Block.KIND_IF)
+            last_block = self.leave_block()
+            self.enter_block(_Block.KIND_IF, not last_block.published)
 
         elif command == 'elif':
-            self.assert_in_block(command)
+            self.assert_in_block(command, _Block.KIND_IF)
 
-            if self.in_published_block:
-                self.in_published_block = False
+            last_block = self.leave_block()
+            if last_block.published:
+                published = False
             else:
                 rule = parser.parse_rule(args)
-                self.in_published_block = rule.test(self.categories)
+                published = rule.test(self.categories)
+
+            self.enter_block(_Block.KIND_IF, published)
 
         elif command == 'endif':
-            self.assert_in_block(command)
-
-            self.in_block = False
-            self.in_published_block = True
+            self.assert_in_block(command, _Block.KIND_IF)
+            self.block_stack.pop()
 
         elif command == 'with':
             var, value = self.parse_with_args(args)

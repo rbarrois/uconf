@@ -144,6 +144,35 @@ class GeneratorTestCase(unittest.TestCase):
         out = list(g)
         self.assertItemsEqual(expected, out)
 
+    def test_inner_block(self):
+        txt = [
+            'foo',
+            '#@if blah',
+            'bar',
+            '#@if blih',
+            'barbar',
+            '#@endif',
+            'bazbaz',
+            '#@endif',
+            'baz',
+        ]
+
+        g = converter.Generator(txt, categories=['blih'], fs=None)
+        expected = [
+            converter.Line('foo', 'foo'),
+            converter.Line(None, '#@if blah'),
+            converter.Line(None, 'bar'),
+            converter.Line(None, '#@if blih'),
+            converter.Line(None, 'barbar'),
+            converter.Line(None, '#@endif'),
+            converter.Line(None, 'bazbaz'),
+            converter.Line(None, '#@endif'),
+            converter.Line('baz', 'baz'),
+        ]
+        out = list(g)
+        self.assertItemsEqual(expected, out)
+
+
 
 if __name__ == '__main__':
     unittest.main()
