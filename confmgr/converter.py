@@ -168,21 +168,55 @@ class Line(object):
             self.original = self.output
 
 
-class _Block(object):
+class Block(object):
     KIND_IF = 'if'
     KIND_WITH = 'with'
 
-    def __init__(self, kind, published, start_line):
+    def __init__(self, kind, start_line, published=True, context=None):
         self.kind = kind
         self.published = published
+        self.context = context or {}
         self.start_line = start_line
 
+
+class BlockStack(object):
+    def __init__(self):
+        self.blocks = []
+
+    def enter(self, *args, **kwargs):
+        block = Block(*args, **kwargs)
+        self.blocks.append(block)
+        return block
+
+    def __nonzero__(self):
+        return bool(self.blocks)
+
+    def __len__(self):
+        return len(self.blocks)
+
+    def __repr__(self):
+        return "<BlockStack: %r>" % self.blocks
+
     @property
-    def closing_command(self):
-        if self.kind == self.KIND_IF:
-            return 'endif'
-        elif self.kind == self.KIND_WITH:
-            return 'endwith'
+    def published(self):
+        return all(b.published for b in self.blocks)
+
+    def get_context(self, key):
+        for block in reversed(self.blocks):
+            try:
+                return block.context[key]
+            except KeyError:
+                continue
+        raise KeyError("Key %s not found in %r" % (key, self))
+
+    def leave(self, kind):
+        if not self.blocks:
+            raise ValueError("Not inside a block.")
+        last_kind = self.blocks[-1].kind
+        if last_kind != kind:
+            raise ValueError("Unexpected last block kind: %s!=%s." %
+                (last_kind, kind))
+        return self.blocks.pop()
 
 
 class Generator(object):
@@ -206,7 +240,7 @@ class Generator(object):
     def __init__(self, src, categories, fs):
         self.src = src
         self.categories = categories
-        self.block_stack = []
+        self.block_stack = BlockStack()
         self.context = {}
         self.fs = fs
         self._current_lineno = 0
@@ -241,35 +275,28 @@ class Generator(object):
             else:
                 yield Line(None, line)
 
-    @property
-    def in_published_block(self):
-        return all(b.published for b in self.block_stack)
-
     def invalid(self, message, *args):
         """Generate a contextualized error message."""
         error = "Error on line %d: " % self._current_lineno
         raise ValueError(error + message % args)
 
-    def assert_in_block(self, command, kind):
-        """Enforce "command within a block"."""
-        if not self.block_stack:
-            self.invalid("Invalid command '%s' outside a block", command)
-        current_block = self.block_stack[-1]
-        if current_block.kind != kind:
-            self.invalid("Invalid command '%s' in %r block.", command,
-                current_block.kind)
+    @property
+    def in_published_block(self):
+        return self.block_stack.published
 
-    def enter_block(self, kind, published):
-        block = _Block(
+    def enter_block(self, kind, published=True, context=None):
+        return self.block_stack.enter(
             kind=kind,
             published=published,
+            context=context,
             start_line=self._current_lineno,
         )
-        self.block_stack.append(block)
-        return block
 
-    def leave_block(self):
-        return self.block.pop()
+    def leave_block(self, kind):
+        try:
+            return self.block_stack.leave(kind)
+        except ValueError as e:
+            self.invalid("Error when closing block: %r", e)
 
     def parse_with_args(self, args):
         """Parce "#@with" arguments (and validate the line structure)."""
@@ -286,43 +313,41 @@ class Generator(object):
         """Handle a "#@<command>" line."""
         if command == 'if':
             rule = parser.Rule(args)
-            self.enter_block(_Block.KIND_IF, rule.test(self.categories))
+            self.enter_block(Block.KIND_IF, published=rule.test(self.categories))
 
         elif command == 'else':
-            self.assert_in_block(command, _Block.KIND_IF)
-            last_block = self.leave_block()
-            self.enter_block(_Block.KIND_IF, not last_block.published)
+            last_block = self.leave_block(Block.KIND_IF)
+            self.enter_block(Block.KIND_IF, published=not last_block.published)
 
         elif command == 'elif':
-            self.assert_in_block(command, _Block.KIND_IF)
-
-            last_block = self.leave_block()
+            last_block = self.leave_block(Block.KIND_IF)
             if last_block.published:
                 published = False
             else:
                 rule = parser.parse_rule(args)
                 published = rule.test(self.categories)
 
-            self.enter_block(_Block.KIND_IF, published)
+            self.enter_block(Block.KIND_IF, published=published)
 
         elif command == 'endif':
-            self.assert_in_block(command, _Block.KIND_IF)
-            self.block_stack.pop()
+            self.leave_block(Block.KIND_IF)
 
         elif command == 'with':
             var, value = self.parse_with_args(args)
-            if self.in_published_block:
-                self.context[var] = value
+            self.enter_block(Block.KIND_WITH, context={var: value})
 
         elif command == 'withfile':
             var, filename = self.parse_with_args(args)
-            if self.in_published_block:
-                self.context[var] = self.read_file(filename)
+            self.enter_block(Block.KIND_WITH,
+                context={var: self.read_file(filename)})
 
         elif command == 'endwith':
-            for var in args.split():
-                if var in self.context:
-                    del self.context[var]
+            last_block = self.leave_block(Block.KIND_WITH)
+            if args and args not in last_block.context:
+                self.invalid(
+                    "Block mismatch: closing 'with' block from line %d with "
+                    "invalid variable %s", last_block.start_line, args)
+                del self.context[var]
 
         else:
             self.invalid("Invalid command '%s'", command)
