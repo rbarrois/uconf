@@ -72,6 +72,78 @@ class GeneratorTestCase(unittest.TestCase):
         out = list(g)
         self.assertItemsEqual(expected, out)
 
+    def test_nonmatching_if(self):
+        txt = [
+            'foo',
+            '#@if blah',
+            'bar',
+            '#@endif',
+            'baz',
+        ]
+
+        g = converter.Generator(txt, categories=['blih'], fs=None)
+        expected = [
+            converter.Line('foo', 'foo'),
+            converter.Line(None, '#@if blah'),
+            converter.Line(None, 'bar'),
+            converter.Line(None, '#@endif'),
+            converter.Line('baz', 'baz'),
+        ]
+        out = list(g)
+        self.assertItemsEqual(expected, out)
+
+    def test_unclosed_nonmatching_if(self):
+        txt = [
+            'foo',
+            '#@if blah',
+            'bar',
+        ]
+
+        g = converter.Generator(txt, categories=['blih'], fs=None)
+        expected = [
+            converter.Line('foo', 'foo'),
+            converter.Line(None, '#@if blah'),
+            converter.Line(None, 'bar'),
+        ]
+        out = list(g)
+        self.assertItemsEqual(expected, out)
+
+    def test_matching_if(self):
+        txt = [
+            'foo',
+            '#@if blah',
+            'bar',
+            '#@endif',
+            'baz',
+        ]
+
+        g = converter.Generator(txt, categories=['blah'], fs=None)
+        expected = [
+            converter.Line('foo', 'foo'),
+            converter.Line(None, '#@if blah'),
+            converter.Line('bar', 'bar'),
+            converter.Line(None, '#@endif'),
+            converter.Line('baz', 'baz'),
+        ]
+        out = list(g)
+        self.assertItemsEqual(expected, out)
+
+    def test_unclosed_matching_if(self):
+        txt = [
+            'foo',
+            '#@if blah',
+            'bar',
+        ]
+
+        g = converter.Generator(txt, categories=['blah'], fs=None)
+        expected = [
+            converter.Line('foo', 'foo'),
+            converter.Line(None, '#@if blah'),
+            converter.Line('bar', 'bar'),
+        ]
+        out = list(g)
+        self.assertItemsEqual(expected, out)
+
 
 if __name__ == '__main__':
     unittest.main()
