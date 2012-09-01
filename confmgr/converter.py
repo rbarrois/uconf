@@ -251,6 +251,7 @@ class Generator(object):
         self.block_stack = BlockStack()
         self.context = {}
         self.fs = fs
+        self.rule_lexer = parser.RuleLexer()
         self._current_lineno = 0
 
     def __iter__(self):
@@ -320,7 +321,7 @@ class Generator(object):
     def handle_command(self, command, args):
         """Handle a "#@<command>" line."""
         if command == 'if':
-            rule = parser.Rule(args)
+            rule = self.rule_lexer.get_rule(args)
             self.enter_block(Block.KIND_IF, published=rule.test(self.categories))
 
         elif command == 'else':

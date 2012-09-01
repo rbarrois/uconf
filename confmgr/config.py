@@ -21,19 +21,20 @@ class Configuration(object):
         self.files = []
         self.repo_root = None
         self.install_root = None
+        self.rule_lexer = parser.RuleLexer()
 
     def add_initial_categories(self, categories):
         self.categories |= frozenset(categories)
 
     def merge_category_rules(self, rules):
         for rule_text, extra_categories in rules:
-            rule = parser.Rule(rule_text)
+            rule = self.rule_lexer.get_rule(rule_text)
             if rule.test(self.categories):
                 self.categories |= frozenset(extra_categories)
 
     def merge_file_rules(self, rules):
         for rule_text, filename in rules:
-            rule = parser.Rule(rule_text)
+            rule = self.rule_lexer.get_rule(rule_text)
             if rule.test(self.categories):
                 self.files.append(filename)
 

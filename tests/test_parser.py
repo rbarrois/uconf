@@ -7,6 +7,9 @@ from confmgr import parser
 
 class RuleLexerTestCase(unittest.TestCase):
 
+    def setUp(self):
+        self.rule_lexer = parser.RuleLexer()
+
     def test_simple(self):
         rules = (
             ('a', parser._TextNode('a')),
@@ -26,9 +29,9 @@ class RuleLexerTestCase(unittest.TestCase):
                 ])),
         )
 
-        for rule, expected_node in rules:
-            node = parser.parse_rule(rule)
-            self.assertEqual(expected_node, node)
+        for rule_text, expected_node in rules:
+            rule = self.rule_lexer.get_rule(rule_text)
+            self.assertEqual(expected_node, rule.node)
 
 
 if __name__ == '__main__':
