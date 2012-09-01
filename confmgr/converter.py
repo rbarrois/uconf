@@ -351,6 +351,7 @@ class Generator(object):
                 context={var: self.read_file(filename)})
 
         elif command == 'endwith':
+            # FIXME: add support for multiple args
             last_block = self.leave_block(Block.KIND_WITH)
             if args and args not in last_block.context:
                 self.invalid(
