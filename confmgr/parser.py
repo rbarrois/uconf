@@ -172,6 +172,7 @@ class _OrNode(_MultiNode):
 
 class _TextToken(tdparser.Token):
     lbp = 25
+    regexp = r'[a-z._-]+'
 
     def __init__(self, text):
         self.text = text
@@ -188,6 +189,7 @@ class _TextToken(tdparser.Token):
 
 class _OrToken(tdparser.Token):
     lbp = 10
+    regexp = r'\|\|'
 
     def led(self, left, context):
         right = context.expression(self.lbp)
@@ -198,6 +200,7 @@ class _OrToken(tdparser.Token):
 
 class _AndToken(tdparser.Token):
     lbp = 15
+    regexp = r'&&'
 
     def led(self, left, context):
         right = context.expression(self.lbp)
@@ -209,6 +212,7 @@ class _AndToken(tdparser.Token):
 
 class _NotToken(tdparser.Token):
     lbp = 10
+    regexp = r'!'
 
     def nud(self, context):
         return _NegateNode(context.expression(100))
@@ -221,36 +225,33 @@ class _NotToken(tdparser.Token):
 # {{{ Lexer
 
 
-class RuleLexer(tdparser.Lexer):
-    """A rule lexer.
+class RuleLexer(object):
+    """Build a rule lexer
 
     Some possible patterns:
     a b c => Matches if any of a, b, c
     a || b || c
     a || (b && !c) => Matches if a or (b and not c)
-
-    Attributes:
-        text (str): the text of the rule
     """
+    def __init__(self):
+        self.lexer = self._build_lexer()
 
-    TOKENS = tdparser.Lexer.TOKENS + (
-        (_TextToken, re.compile(r'[a-z._-]+')),
-        (_OrToken, re.compile(r'\|\|')),
-        (_AndToken, re.compile(r'&&')),
-        (_NotToken, re.compile(r'!')),
-    )
+    @classmethod
+    def _build_lexer(cls):
+        lexer = tdparser.Lexer(with_parens=True)
+        lexer.register_tokens(_TextToken, _OrToken, _AndToken, _NotToken)
+        return lexer
 
-
-def parse_rule(text):
-    return RuleLexer(text).parse()
+    def get_rule(self, text):
+        return Rule(text, self.lexer.parse(text))
 
 # }}}
 # {{{ Rule
 
 class Rule(object):
-    def __init__(self, text):
+    def __init__(self, text, node):
         self.text = text
-        self._node = parse_rule(text)
+        self.node = node
 
     def test(self, categories):
         """Test whether a set of categories match this rule.
@@ -261,7 +262,7 @@ class Rule(object):
         Returns:
             bool
         """
-        return self._node.eval(categories)
+        return self.node.eval(categories)
 
     def __repr__(self):
         return "Rule(%r)" % self.text
@@ -269,6 +270,6 @@ class Rule(object):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
-        return self._node == other._node
+        return self.node == other.node
 
 # }}}
