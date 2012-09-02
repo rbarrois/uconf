@@ -20,6 +20,12 @@ def get_version(package_name):
     return '0.1.0'
 
 
+def read_requirements(filename):
+    with open(filename, 'rt') as f:
+        lines = [l.strip() for l in f]
+        return [l for l in lines if l and not l.startswith('#')]
+
+
 PACKAGE = 'confmgr'
 
 
@@ -37,9 +43,8 @@ setup(
     setup_requires=[
         'distribute',
     ],
-    install_requires=[
-        'tdparser',
-    ],
+    install_requires=read_requirements('requirements.txt'),
+    test_requires=read_requirements('test_requirements.txt'),
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: MIT License",
