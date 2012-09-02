@@ -31,6 +31,22 @@ def with_tempfile(fun):
     return decorated
 
 
+class HelpersTestCase(unittest.TestCase):
+    def setUp(self):
+        self.fs = fs.FileSystem(root='/foo')
+
+    def test_normalize(self):
+        self.assertEqual('/foo/bar', self.fs.normalize_path('bar'))
+        self.assertEqual('/foo/bar', self.fs.normalize_path('baz/../bar'))
+        self.assertEqual('/bar/baz', self.fs.normalize_path('/bar/baz'))
+
+    def test_split_path(self):
+        self.assertEqual(['/'], list(self.fs.split_path('/')))
+        self.assertEqual(['/', '/foo'], list(self.fs.split_path('/foo')))
+        self.assertEqual(['/', '/bar'], list(self.fs.split_path('/bar')))
+        self.assertEqual(['/', '/foo', '/foo/bar'], list(self.fs.split_path('/foo/bar')))
+
+
 class FileSystemTestCase(unittest.TestCase):
     """Tests for a 'normal' file system."""
     def setUp(self):

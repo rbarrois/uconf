@@ -16,7 +16,7 @@ class BaseFileSystem(object):
         self.root = root
         self.encoding = encoding
 
-    # Extension points
+    # Low-level directives
     def _access(self, filename, mode):
         raise NotImplementedError()
 
@@ -35,17 +35,65 @@ class BaseFileSystem(object):
     def _symlink(self, link_name, target):
         raise NotImplementedError()
 
-    # Base commands
+    def _mkdir(self, path):
+        """Create a directory, also creating all parents if needed."""
+        raise NotImplementedError()
+
+    # Helpers
     def normalize_path(self, path):
         return os.path.normpath(os.path.join(self.root, path))
 
+    def split_path(self, path):
+        """Convert a (normalized) path to a list of its parent.
+
+        >>> split_path('/foo/bar/baz')
+        ['/', '/foo', '/foo/bar', '/foo/bar/baz']
+        """
+        if path == '/':
+            return [path]
+        parts = []
+        head = tail = path
+        while tail:
+            parts.append(head)
+            head, tail = os.path.split(path)
+            path = head
+        return reversed(parts)
+
+    # Base commands
+
     def access(self, path, read=True, write=False):
+        """Whether a file can be accessed."""
         mode = os.F_OK
         if read:
             mode |= os.R_OK
         if write:
             mode |= os.W_OK
         return self._access(self.normalize_path(path), mode)
+
+    def file_exists(self, path):
+        """Whether the path exists, and is a file."""
+        path = self.normalize_path(path)
+        if not self._access(path, os.F_OK):
+            return False
+        f_stat = self._stat(path)
+        return stat.S_ISREG(f_stat)
+
+    def dir_exists(self, path):
+        path = self.normalize_path(path)
+        if not self._access(path, os.F_OK):
+            return False
+        f_stat = self._stat(path)
+        return stat.S_ISDIR(f_stat)
+
+    def mkdir(self, path):
+        path = self.normalize_path(path)
+        for part in self.split_path(path):
+            if self.access(part) and not self.dir_exists(part):
+                # Something there, but not a dir
+                raise IOError("Parent %s of %s is not a directory" %
+                    (part, path))
+            elif not self.dir_exists(part):
+                self._mkdir(part)
 
     def open(self, filename, mode, encoding=None):
         return self._open(self.normalize_path(filename), mode, encoding=encoding)
@@ -142,6 +190,9 @@ class FileSystem(BaseFileSystem):
     def _symlink(self, link_name, target):
         return os.symlink(target, link_name)
 
+    def _mkdir(self, path):
+        os.mkdir(path)
+
 
 class ReadOnlyFS(BaseFileSystem):
 
@@ -172,3 +223,6 @@ class ReadOnlyFS(BaseFileSystem):
 
     def _symlink(self, link_name, target):
         self._ro_forbidden("Cannot symlink %s to %s", link_name, target)
+
+    def _mkdir(self, path):
+        self._ro_forbidden("Cannot create folder %s", path)
