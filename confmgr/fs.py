@@ -47,8 +47,8 @@ class BaseFileSystem(object):
             mode |= os.W_OK
         return self._access(self.normalize_path(path), mode)
 
-    def open(self, filename, mode):
-        return self._open(self.normalize_path(filename), mode)
+    def open(self, filename, mode, encoding=None):
+        return self._open(self.normalize_path(filename), mode, encoding=encoding)
 
     def stat(self, filename):
         return self._stat(self.normalize_path(filename))
