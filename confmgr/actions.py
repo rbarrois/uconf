@@ -19,6 +19,23 @@ class BaseAction(object):
         raise NotImplementedError()
 
 
+class CopyAction(BaseAction):
+    def forward(self, categories):
+        self.fs.copy(self.source, self.destination)
+
+    def backward(self, categories):
+        self.fs.copy(self.destination, self.source)
+
+
+class SymLinkAction(BaseAction):
+    def forward(self, categories):
+        self.fs.create_symlink(
+            link_name=self.destination,
+            link_target=self.source,
+            relative=False,
+            force=False)
+
+
 class FileContentAction(BaseAction):
     """An action based on file *contents*."""
 
