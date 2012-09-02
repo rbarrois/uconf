@@ -41,6 +41,8 @@ class BaseFileSystem(object):
 
     # Helpers
     def normalize_path(self, path):
+        if os.path.isabs(path):
+            return path
         return os.path.normpath(os.path.join(self.root, path))
 
     def split_path(self, path):
@@ -60,7 +62,6 @@ class BaseFileSystem(object):
         return reversed(parts)
 
     # Base commands
-
     def access(self, path, read=True, write=False):
         """Whether a file can be accessed."""
         mode = os.F_OK
