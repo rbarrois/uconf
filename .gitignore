@@ -1,7 +1,13 @@
-*.swp
+# Temporary files
+.*.swp
 *.pyc
-MANIFEST
-build
-dist
+*.pyo
+
+# Build-related files
+doc/_build/
 .coverage
-coverage/
+*.egg-info
+build/
+dist/
+htmlcov/
+MANIFEST
