@@ -5,7 +5,7 @@
 
 
 class BaseAction(object):
-    def __init__(self, source, fs, **kwargs):
+    def __init__(self, source, destination, fs, **kwargs):
         super(BaseAction, self).__init__(**kwargs)
         self.source = source
         self.fs = fs
@@ -21,10 +21,6 @@ class BaseAction(object):
 
 class FileContentAction(BaseAction):
     """An action based on file *contents*."""
-
-    def __init__(self, source, fs, destination, **kwargs):
-        super(FileContentAction, self).__init__(source, fs, **kwargs)
-        self.destination = destination
 
     def forward(self, categories):
         source_lines = self.fs.readlines(self.source)
