@@ -9,6 +9,8 @@ import os
 import tempfile
 import unittest
 
+from fs import osfs
+
 from confmgr import fs
 
 
@@ -31,26 +33,11 @@ def with_tempfile(fun):
     return decorated
 
 
-class HelpersTestCase(unittest.TestCase):
-    def setUp(self):
-        self.fs = fs.FileSystem(root='/foo')
-
-    def test_normalize(self):
-        self.assertEqual('/foo/bar', self.fs.normalize_path('bar'))
-        self.assertEqual('/foo/bar', self.fs.normalize_path('baz/../bar'))
-        self.assertEqual('/bar/baz', self.fs.normalize_path('/bar/baz'))
-
-    def test_split_path(self):
-        self.assertEqual(['/'], list(self.fs.split_path('/')))
-        self.assertEqual(['/', '/foo'], list(self.fs.split_path('/foo')))
-        self.assertEqual(['/', '/bar'], list(self.fs.split_path('/bar')))
-        self.assertEqual(['/', '/foo', '/foo/bar'], list(self.fs.split_path('/foo/bar')))
-
-
 class FileSystemTestCase(unittest.TestCase):
     """Tests for a 'normal' file system."""
     def setUp(self):
-        self.fs = fs.FileSystem(root='/')
+        self.base_fs = osfs.OSFS('/')
+        self.fs = fs.FileSystem(self.base_fs)
 
     @with_tempfile
     def test_read_line(self, name):
@@ -58,6 +45,20 @@ class FileSystemTestCase(unittest.TestCase):
             f.write(u"  Example line\n<blank> \n")
 
         self.assertEqual(u"Example line", self.fs.read_one_line(name))
+
+    @with_tempfile
+    def test_read_line_utf8(self, name):
+        with io.open(name, 'wt', encoding='utf8') as f:
+            f.write(u"yüþæó, ßøḿē ūñįçØðe")
+
+        self.assertEqual(u"yüþæó, ßøḿē ūñįçØðe", self.fs.read_one_line(name, 'utf8'))
+
+    @with_tempfile
+    def test_read_line_latin1(self, name):
+        with io.open(name, 'wt', encoding='latin1') as f:
+            f.write(u"À lïttlè látîñ1")
+
+        self.assertEqual(u"À lïttlè látîñ1", self.fs.read_one_line(name, 'latin1'))
 
     @with_tempfile
     def test_read_lines(self, name):
@@ -87,34 +88,17 @@ class FileSystemTestCase(unittest.TestCase):
             u"final.\n",
         ], lines)
 
-
-class ReadOnlyFSTestCase(unittest.TestCase):
-    def setUp(self):
-        self.fs = fs.ReadOnlyFS(root='/')
+    @with_tempfile
+    def test_write_utf8(self, name):
+        self.fs.writelines(name, [u"yüþæó, ßøḿē ūñįçØðe"], 'utf8')
+        with io.open(name, 'rt', encoding='utf8') as f:
+            self.assertEqual(u"yüþæó, ßøḿē ūñįçØðe\n", f.readline())
 
     @with_tempfile
-    def test_read_line(self, name):
-        with io.open(name, 'wt', encoding='utf8') as f:
-            f.write(u"  Example line\n<blank> \n")
-
-        self.assertEqual(u"Example line", self.fs.read_one_line(name))
-
-    @with_tempfile
-    def test_read_lines(self, name):
-        with io.open(name, 'wt', encoding='utf8') as f:
-            f.write(u"  Example line\n<blank> \n")
-
-        self.assertEqual([
-            u"  Example line",
-            u"<blank> ",
-        ], list(self.fs.readlines(name)))
-
-    @with_tempfile
-    def test_writing_fails(self, name):
-        with io.open(name, 'wt', encoding='utf8') as f:
-            f.write(u"  Example line\n<blank> \n")
-
-        self.assertRaises(IOError, self.fs.writelines, name, [])
+    def test_write_latin1(self, name):
+        self.fs.writelines(name, [u"À lïttlè látîñ1"], 'latin1')
+        with io.open(name, 'rt', encoding='latin1') as f:
+            self.assertEqual(u"À lïttlè látîñ1\n", f.readline())
 
 
 if __name__ == '__main__':
