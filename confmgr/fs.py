@@ -3,31 +3,46 @@
 
 """Abstract the filesystem layer."""
 
+import codecs
 import io
 import os
 import stat
 
 
 class FileSystem(object):
-    def __init__(self, fs):
+    def __init__(self, fs, default_encoding=None):
         self.fs = fs
+        self.default_encoding = default_encoding
 
     def __getattr__(self, name):
         return getattr(self.fs, name)
 
     def open(self, filename, mode='r', encoding=None, **kwargs):
-        base_file = self.fs.open(filename, mode, **kwargs)
-        if 't' in mode:
-            return io.open(base_file, encoding=encoding or self.encoding)
+        encoding = encoding or self.default_encoding
+
+        if encoding and 'b' not in mode:
+            # Text mode requested, fix it.
+            if 't' in mode:
+                mode = mode.replace('t', 'b')
+            else:
+                mode += 'b'
+
+            writer = codecs.getwriter(encoding)
+            reader = codecs.getreader(encoding)
+
+            wrapper = lambda stream: reader(writer(stream))
         else:
-            return base_file
+            wrapper = lambda stream: stream
+
+        base_file = self.fs.open(filename, mode, **kwargs)
+        return wrapper(base_file)
 
     def read_one_line(self, filename, encoding=None):
         """Read one (stripped) line from a file.
 
         Typically used to read a password.
         """
-        with self.open(filename, 'rt', **kwargs) as f:
+        with self.open(filename, 'rt', encoding=encoding) as f:
             return f.readline().strip()
 
     def readlines(self, filename, encoding=None):
@@ -35,7 +50,7 @@ class FileSystem(object):
 
         Yields lines of the file, stripping the terminating \n.
         """
-        with self.open(filename, 'rt', **kwargs) as f:
+        with self.open(filename, 'rt', encoding=encoding) as f:
             for line in f:
                 if line and line[-1] == '\n':
                     # Strip final \n
