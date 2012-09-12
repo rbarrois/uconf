@@ -19,9 +19,8 @@ class ActionConfig(object):
     SYMLINK = 'symlink'
     PARSE = 'parse'
 
-    def __init__(self, action, target=None, **options):
+    def __init__(self, action, **options):
         self.action = action
-        self.target = target
         self.options = options
 
 
