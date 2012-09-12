@@ -78,6 +78,7 @@ class FileContentAction(BaseAction):
 
 
 class FileProcessingAction(FileContentAction):
+    """Process a file, using usual rules."""
     def forward_content(self, source_lines, categories):
         processor = converter.FileProcessor(source_lines, self.fs)
         return processor.forward(categories)

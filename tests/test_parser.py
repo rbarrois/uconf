@@ -3,29 +3,29 @@
 
 import unittest
 
-from confmgr import parser
+from confmgr import rule_parser
 
 class RuleLexerTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.rule_lexer = parser.RuleLexer()
+        self.rule_lexer = rule_parser.RuleLexer()
 
     def test_simple(self):
         rules = (
-            ('a', parser._TextNode('a')),
-            ('a && b', parser._AndNode(
-                [parser._TextNode('a'), parser._TextNode('b')])),
-            ('a || b', parser._OrNode(
-                [parser._TextNode('a'), parser._TextNode('b')])),
-            ('!a', parser._NegateNode(parser._TextNode('a'))),
-            ('a || (b || c)', parser._OrNode([
-                parser._TextNode('a'),
-                parser._TextNode('b'),
-                parser._TextNode('c'),
+            ('a', rule_parser._TextNode('a')),
+            ('a && b', rule_parser._AndNode(
+                [rule_parser._TextNode('a'), rule_parser._TextNode('b')])),
+            ('a || b', rule_parser._OrNode(
+                [rule_parser._TextNode('a'), rule_parser._TextNode('b')])),
+            ('!a', rule_parser._NegateNode(rule_parser._TextNode('a'))),
+            ('a || (b || c)', rule_parser._OrNode([
+                rule_parser._TextNode('a'),
+                rule_parser._TextNode('b'),
+                rule_parser._TextNode('c'),
                 ])),
-            ('a && !b', parser._AndNode([
-                parser._TextNode('a'),
-                parser._NegateNode(parser._TextNode('b')),
+            ('a && !b', rule_parser._AndNode([
+                rule_parser._TextNode('a'),
+                rule_parser._NegateNode(rule_parser._TextNode('b')),
                 ])),
         )
 

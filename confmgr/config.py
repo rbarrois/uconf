@@ -9,7 +9,20 @@ import re
 import subprocess
 
 # Local imports
-from . import parser
+from . import rule_parser
+
+
+class ActionConfig(object):
+    """Definition of the action for a file."""
+
+    COPY = 'copy'
+    SYMLINK = 'symlink'
+    PARSE = 'parse'
+
+    def __init__(self, action, target=None, **options):
+        self.action = action
+        self.target = target
+        self.options = options
 
 
 class Configuration(object):
@@ -18,17 +31,19 @@ class Configuration(object):
     Attributes:
         categories (str set): all categories
         files (str list): all managed files
+        file_actions (dict(str => ActionConfig)): actions for files
         repo_root (str): absolute path of the repository root
         install_root (str): absolute path where files should be installed
-        rule_lexer (parser.RuleLexer): lexer to use for rule parsing
+        rule_lexer (rule_parser.RuleLexer): lexer to use for rule parsing
     """
 
     def __init__(self, *args, **kwargs):
         self.categories = frozenset()
         self.files = []
+        self.file_actions = {}
         self.repo_root = None
         self.install_root = None
-        self.rule_lexer = parser.RuleLexer()
+        self.rule_lexer = rule_parser.RuleLexer()
 
     def add_initial_categories(self, categories):
         self.categories |= frozenset(categories)

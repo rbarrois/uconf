@@ -3,7 +3,7 @@
 
 import re
 
-from confmgr import parser
+from confmgr import rule_parser
 
 
 class FileProcessor(object):
@@ -251,7 +251,7 @@ class Generator(object):
         self.block_stack = BlockStack()
         self.context = {}
         self.fs = fs
-        self.rule_lexer = parser.RuleLexer()
+        self.rule_lexer = rule_parser.RuleLexer()
         self._current_lineno = 0
 
     def __iter__(self):
@@ -333,7 +333,7 @@ class Generator(object):
             if last_block.published:
                 published = False
             else:
-                rule = parser.parse_rule(args)
+                rule = rule_parser.parse_rule(args)
                 published = rule.test(self.categories)
 
             self.enter_block(Block.KIND_IF, published=published)
