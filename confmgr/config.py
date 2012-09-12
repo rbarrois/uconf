@@ -9,6 +9,7 @@ import re
 import subprocess
 
 # Local imports
+from . import action_parser
 from . import rule_parser
 
 
@@ -19,7 +20,16 @@ class ActionConfig(object):
     SYMLINK = 'symlink'
     PARSE = 'parse'
 
+    ACTIONS = (
+        COPY,
+        SYMLINK,
+        PARSE,
+    )
+
     def __init__(self, action, **options):
+        if action not in self.ACTIONS:
+            raise ValueError("Invalid action %s, choose one of %s" % (
+                action, ', '.join(self.ACTIONS)))
         self.action = action
         self.options = options
 
@@ -43,6 +53,7 @@ class Configuration(object):
         self.repo_root = None
         self.install_root = None
         self.rule_lexer = rule_parser.RuleLexer()
+        self.action_lexer = action_parser.ActionLexer()
 
     def add_initial_categories(self, categories):
         self.categories |= frozenset(categories)
@@ -58,3 +69,9 @@ class Configuration(object):
             rule = self.rule_lexer.get_rule(rule_text)
             if rule.test(self.categories):
                 self.files.append(filename)
+
+    def merge_file_actions(self, actions):
+        for filename, action_text in actions:
+            action, option_text = action_text.strip().split(' ', 1)
+            options = self.action_lexer.parse(option_text)
+            self.file_actions[filename] = ActionConfig(action, **options)
