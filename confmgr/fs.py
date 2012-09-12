@@ -21,7 +21,8 @@ class FileSystem(object):
         encoding = encoding or self.default_encoding
 
         if encoding and 'b' not in mode:
-            # Text mode requested, fix it.
+            # Text mode requested, and some encoding was given.
+            # We don't trust the underlying layers for unicode handling.
             if 't' in mode:
                 mode = mode.replace('t', 'b')
             else:
