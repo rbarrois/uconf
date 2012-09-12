@@ -41,10 +41,10 @@ class FileContentAction(BaseAction):
 
     def forward(self, categories):
         source_lines = self.fs.readlines(self.source)
-        destination_lines = self.forward_file(source_lines, categories)
+        destination_lines = self.forward_content(source_lines, categories)
         self.fs.writelines(self.destination, destination_lines)
 
-    def forward_file(self, source_lines, categories):
+    def forward_content(self, source_lines, categories):
         """Convert the source file, based on its lines.
         
         Args:
@@ -59,11 +59,11 @@ class FileContentAction(BaseAction):
     def backward(self, categories):
         source_lines = self.fs.readlines(self.source)
         modified_lines = self.fs.readlines(self.destination)
-        updated_lines = self.backward_file(source_lines, categories, modified_lines)
+        updated_lines = self.backward_content(source_lines, categories, modified_lines)
 
         self.fs.writelines(self.source, updated_lines)
 
-    def backward_file(self, source_lines, categories, modified_lines):
+    def backward_content(self, source_lines, categories, modified_lines):
         """Convert back the modified file, based on its lines.
         
         Args:
@@ -78,10 +78,10 @@ class FileContentAction(BaseAction):
 
 
 class FileProcessingAction(FileContentAction):
-    def forward_file(self, source_lines, categories):
+    def forward_content(self, source_lines, categories):
         processor = converter.FileProcessor(source_lines, self.fs)
         return processor.forward(categories)
 
-    def backward_file(self, source_lines, categories, modified_lines):
+    def backward_content(self, source_lines, categories, modified_lines):
         processor = converter.FileProcessor(source_lines, self.fs)
         return processor.backward(categories, modified_lines)
