@@ -172,7 +172,7 @@ class _OrNode(_MultiNode):
 
 class _TextToken(tdparser.Token):
     lbp = 25
-    regexp = r'[a-z._-]+'
+    regexp = r'[a-zA-Z0-9._-]+'
 
     def __init__(self, text):
         self.text = text

@@ -4,6 +4,12 @@
 
 from __future__ import with_statement
 
+import socket
+import sys
+
+from . import __version__
+from . import config
+
 
 class BaseCommand(object):
     """Base command object."""
@@ -30,10 +36,13 @@ class BaseCommand(object):
         else:
             return cls.__doc__
 
-    def __init__(self, config, options, parser):
-        self.config = config
+    def __init__(self, options, repo_config, parser):
         self.options = options
+        self.repo_config = repo_config
         self.parser = parser
+
+        self.stdout = sys.stdout
+        self.stderr = sys.stderr
 
     def run(self):
         """Run the actual command."""
@@ -53,10 +62,34 @@ class VersionCommand(BaseCommand):
     help = "Display the current version number"
 
     def run(self):
-        self.parser.print_version()
+        self.stdout.write('%(prog)s %(version)s\n' % dict(
+            prog=self.parser.prog, version=__version__))
+
+
+class WithFilesCommand(BaseCommand):
+    """Enhanced base command class with list of rules already parsed."""
+
+    def __init__(self, *args, **kwargs):
+        super(WithFilesCommand, self).__init__(*args, **kwargs)
+        self.repository = config.Repository()
+        self.repository.fill_from_config(self.repo_config)
+
+        initial_cats = self.options.get_tuple('initial',
+            (socket.getfqdn(), socket.gethostname()))
+        self.active_repository = self.repository.extract(initial_cats)
+
+
+class ListFiles(WithFilesCommand):
+    name = 'listfiles'
+    help = "List all registered files"
+
+    def run(self):
+        for filename, _action in sorted(self.active_repository.iter_files()):
+            self.stdout.write('- %s\n' % filename)
 
 
 base_commands = [
     HelpCommand,
     VersionCommand,
+    ListFiles,
 ]
