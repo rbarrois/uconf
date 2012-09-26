@@ -23,15 +23,14 @@ import os
 import stat
 
 from . import commands
-from . import configreader
-from . import merged_config
+from . import confhelpers
 from . import __version__
 
 
 DEFAULT_PREF_FILES = ('/etc/confmgr.conf', '~/.confmgrrc')
 
 
-Default = merged_config.Default
+Default = confhelpers.Default
 
 
 def get_absolute_path(path):
@@ -117,7 +116,7 @@ class CLI(object):
         # Merge preferences
         pref_files = base_args.prefs
 
-        config = configreader.ConfigReader(
+        config = confhelpers.ConfigReader(
             multi_valued_sections=('files', 'categories', 'actions'))
 
         for pref_file in pref_files:
@@ -163,11 +162,11 @@ class CLI(object):
         """
         prefs = base_args.prefs
 
-        return merged_config.MergedConfig(
-            merged_config.DictNamespace(command_args),
-            merged_config.DictNamespace(base_args),
-            merged_config.NormalizedDict(prefs[command_class.get_name()]),
-            merged_config.NormalizedDict(prefs['core']),
+        return confhelpers.MergedConfig(
+            confhelpers.DictNamespace(command_args),
+            confhelpers.DictNamespace(base_args),
+            confhelpers.NormalizedDict(prefs[command_class.get_name()]),
+            confhelpers.NormalizedDict(prefs['core']),
         )
 
     # Running commands
