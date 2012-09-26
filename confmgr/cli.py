@@ -20,6 +20,7 @@ The CLI parsing is a three-step process:
 
 import argparse
 import os
+import stat
 
 from . import commands
 from . import configreader
@@ -57,6 +58,9 @@ class CLI(object):
         self.register_options(self.parser)
         self.register_base_commands()
 
+    # Options and parsers
+    # -------------------
+
     def make_base_parser(self, progname):
         parser = argparse.ArgumentParser(prog=self.progname, add_help=False)
         parser.add_argument('--root', '-r', help="Set confmgr repository root")
@@ -76,6 +80,9 @@ class CLI(object):
         parser.add_argument('--version', '-V', help="Display version", action='version',
             version='%(prog)s ' + __version__)
 
+    # Registering commands
+    # --------------------
+
     def register_command(self, command_class):
         """Register a new command from its class."""
         cmd_parser = self.subparsers.add_parser(command_class.get_name(),
@@ -89,41 +96,60 @@ class CLI(object):
         for command_class in commands.base_commands:
             self.register_command(command_class)
 
-    def extract_prefs(self, base_args):
+    # Reading configuration
+    # ----------------------
+
+    def find_repo_root(self, start_folder):
+        """Try to find a repository root starting in the current folder."""
+        prev = None
+        current = get_absolute_path(start_folder)
+        while prev != current:
+            maybe_config = os.path.join(current, '.confmgr')
+            if os.access(maybe_config, os.F_OK):
+                dirmode = os.stat(maybe_config).st_mode
+                if stat.S_ISDIR(dirmode):
+                    return current
+            prev, current = current, os.path.dirname(current)
+
+    def extract_config(self, base_args):
         """Retrieve and merge the various 'user-preference' config files."""
+
+        # Merge preferences
         pref_files = base_args.prefs
 
-        config = configreader.ConfigReader()
+        config = configreader.ConfigReader(
+            multi_valued_sections=('files', 'categories', 'actions'))
+
         for pref_file in pref_files:
             filename = get_absolute_path(pref_file)
             if os.access(filename, os.R_OK):
                 with open(filename, 'rt') as f:
                     config.parse(f, name_hint=filename)
 
-        base_args.prefs = config
-
-    def extract_repo_config(self, base_args):
-        """Extract configuration and root folder from base arguments."""
         repo_root = repo_config_file = None
-        repo_config = configreader.ConfigReader()
 
+        # Fill repo_root/repo_config from CLI arguments
         if base_args.root:
             repo_root = get_absolute_path(base_args.root)
-            repo_config_file = os.path.join(repo_root, 'repo.conf')
-
         if base_args.repo_config:
             repo_config_file = get_absolute_path(base_args.repo_config)
-            if not repo_root:
-                repo_root = os.path.dirname(repo_config_file)
 
+        # Try to fill repo_config_file/repo_root from each other
+        if repo_config_file and not repo_root:
+            repo_root = os.path.dirname(repo_config_file)
+        if not repo_root:
+            repo_root = self.find_repo_root(os.getcwd())
+        if repo_root and not repo_config_file:
+            repo_config_file = os.path.join(repo_root, '.confmgr', 'config')
+
+        # Read configuration from repo config file, if available
         if repo_config_file and os.access(repo_config_file, os.R_OK):
             with open(repo_config_file, 'rt') as f:
-                repo_config.parse(f, name_hint=os.path.basename(repo_config_file))
+                config.parse(f, name_hint=os.path.basename(repo_config_file))
 
-        if not repo_root:
-            repo_root = get_absolute_path(os.getcwd())
-
-        base_args.repo_config = repo_config
+        # Update base_args
+        base_args.repo_config = config
+        base_args.prefs = config
         base_args.root = repo_root
 
     def make_command_config(self, base_args, command_args, command_class):
@@ -144,12 +170,14 @@ class CLI(object):
             merged_config.NormalizedDict(prefs['core']),
         )
 
+    # Running commands
+    # ----------------
+
     def run_from_argv(self, argv):
         """Actually run the requested command from the argv."""
         # Fetch base settings
         base_args, _extra = self.base_parser.parse_known_args(argv)
-        self.extract_repo_config(base_args)
-        self.extract_prefs(base_args)
+        self.extract_config(base_args)
 
         # Add command-specific arguments
         args = self.parser.parse_args(argv)
