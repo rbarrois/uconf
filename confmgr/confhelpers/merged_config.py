@@ -24,6 +24,11 @@ class Default(object):
     def __bool__(self):
         return bool(self.value)
 
+    def __eq__(self, other):
+        if not isinstance(other, Default):
+            return NotImplemented
+        return self.value == other.value
+
 
 class NoDefault(object):
     pass
