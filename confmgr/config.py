@@ -92,9 +92,10 @@ class Repository(object):
             self.category_rules.append((rule, extra_categories.split()))
 
     def _merge_file_rules(self, rules):
-        for rule_text, filename in rules.items():
+        for rule_text, filenames in rules.items():
             rule = self.rule_lexer.get_rule(rule_text)
-            self.file_rules.append((rule, filename))
+            for filename in filenames.split(' '):
+                self.file_rules.append((rule, filename))
 
     def _merge_file_actions(self, actions):
         for filename, action_text in actions.items():
