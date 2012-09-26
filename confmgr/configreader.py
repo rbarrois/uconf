@@ -15,21 +15,36 @@ unusual keys: "foo and bar: baz".
 import re
 
 
-class Section(object):
+class BaseSection(object):
     def __init__(self, name):
         self.name = name
-        self.d = dict()
+        self.entries = dict()
 
-    def __setitem__(self, key, value):
-        self.d.setdefault(key, []).append(value)
-
-    def items(self):
-        for key, values in self.d.items():
-            for value in values:
-                yield (key, value)
+    def __iter__(self):
+        return iter(self.items())
 
     def __repr__(self):
-        return '<Section %s>' % self.name
+        return '<%s %s>' % (self.__class__.__name__, self.name)
+
+
+class MultiValuedSection(BaseSection):
+    """A section where each key may appear more than once."""
+
+    def __setitem__(self, key, value):
+        self.entries.setdefault(key, []).append(value)
+
+    def items(self):
+        for key, values in self.entries.items():
+            for value in values:
+                yield key, value
+
+
+class SingleValuedSection(BaseSection):
+    def __setitem__(self, key, value):
+        self.entries[key] = value
+
+    def items(self):
+        return self.entries.items()
 
 
 class ConfigReader(object):
@@ -37,27 +52,31 @@ class ConfigReader(object):
     re_blank_line = re.compile(r'^(#.*)?$')
     re_normal_line = re.compile(r'^([^:=]+)[:=](.*)$')
 
-    def __init__(self):
+    def __init__(self, multi_valued_sections=()):
         self.sections = {}
+        self.multi_valued_sections = multi_valued_sections
         self.current_section = self['core']
 
     def __getitem__(self, section_name):
-        return self.sections.setdefault(section_name, {})
+        try:
+            return self.sections[section_name]
+        except KeyError:
+            if section_name in self.multi_valued_sections:
+                section = MultiValuedSection(section_name)
+            else:
+                section = SingleValuedSection(section_name)
+            self.sections[section_name] = section
+            return section
 
     def __iter__(self):
         return iter(self.sections)
 
     def enter_section(self, name):
-        if name in self.sections:
-            section = self.sections[name]
-        else:
-            section = Section(name)
-            self.sections[name] = section
-        self.current_section = section
-        return section
+        self.current_section = self[name]
+        return self.current_section
 
     def parse(self, f, name_hint=''):
-        self.enter_section('defaults')
+        self.enter_section('core')
 
         for lineno, line in enumerate(f):
             line = line.strip()
