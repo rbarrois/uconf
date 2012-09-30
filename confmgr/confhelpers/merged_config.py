@@ -13,7 +13,7 @@ class Default(object):
         self.value = value
 
     def __repr__(self):
-        return 'Default(%r)' % self.value
+        return 'Default(%r)' % (self.value,)
 
     def __hash__(self):
         return hash(self.value)
