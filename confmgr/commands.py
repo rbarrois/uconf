@@ -44,6 +44,17 @@ class BaseCommand(object):
         self.stdout = sys.stdout
         self.stderr = sys.stderr
 
+    def warning(self, message, *args):
+        self.stderr.write(message % args)
+        self.stderr.write('\n')
+        if self.options.strict:
+            self.stderr.write("Strict mode: aborting.\n")
+            raise SystemExit(1)
+
+    def info(self, message, *args):
+        self.stdout.write(message % args)
+        self.stdout.write('\n')
+
     def run(self):
         """Run the actual command."""
         pass

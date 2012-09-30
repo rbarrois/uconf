@@ -75,6 +75,8 @@ class CLI(object):
             action="store_true", default=False)
         parser.add_argument('--initial', '-i', nargs='*',
             help="Set alternate initial categories", default=Default(tuple()))
+        parser.add_argument('--strict', help="Stop on warnings",
+            action="store_true", default=False)
         parser.add_argument('--target', '-t', help="Write generated files to TARGET")
         parser.add_argument('--version', '-V', help="Display version", action='version',
             version='%(prog)s ' + __version__)
