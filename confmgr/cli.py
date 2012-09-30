@@ -54,7 +54,6 @@ class CLI(object):
             argument_default=Default(None))
         self.subparsers = self.parser.add_subparsers(help="Commands")
 
-        self.register_options(self.parser)
         self.register_base_commands()
 
     # Options and parsers
@@ -67,6 +66,8 @@ class CLI(object):
             help="Use repository configuration file at REPO_CONFIG")
         parser.add_argument('--prefs', '-p', nargs='*', default=DEFAULT_PREF_FILES,
             help="Read user preferences from PREF files", metavar='PREF')
+        parser.add_argument('--version', '-V', help="Display version", action='version',
+            version='%(prog)s ' + __version__)
         return parser
 
     def register_options(self, parser):
@@ -78,8 +79,6 @@ class CLI(object):
         parser.add_argument('--strict', help="Stop on warnings",
             action="store_true", default=False)
         parser.add_argument('--target', '-t', help="Write generated files to TARGET")
-        parser.add_argument('--version', '-V', help="Display version", action='version',
-            version='%(prog)s ' + __version__)
 
     # Registering commands
     # --------------------
@@ -89,6 +88,7 @@ class CLI(object):
         cmd_parser = self.subparsers.add_parser(command_class.get_name(),
             parents=[self.base_parser],
             help=command_class.get_help())
+        self.register_options(cmd_parser)
         command_class.register_options(cmd_parser)
         cmd_parser.set_defaults(command=command_class)
 
