@@ -9,6 +9,7 @@ import sys
 
 from . import __version__
 from . import config
+from .confhelpers import Default
 
 
 class BaseCommand(object):
@@ -90,6 +91,36 @@ class WithFilesCommand(BaseCommand):
         self.active_repository = self.repository.extract(initial_cats)
 
 
+class Make(WithFilesCommand):
+    """Make one or more files."""
+
+    help = "Build and install one or more files."
+
+    @classmethod
+    def register_options(cls, parser):
+        parser.add_argument('files', nargs='*', default=Default(tuple()),
+            help="Build selected files, all valid if empty.")
+        super(Make, cls).register_options(parser)
+
+    def _get_files(self):
+        files = self.options.get('files')
+        active_files = self.active_repository.iter_files()
+
+        if files:
+            active_files = dict(active_files)
+            for filename in files:
+                if filename not in active_files:
+                    self.warning("File %s shouldn't be built.", filename)
+                yield filename, active_files[filename]
+        else:
+            for filename, action in active_files:
+                yield filename, action
+
+    def run(self):
+        for filename, action in self._get_files():
+            self.info("%s: %s", filename, action)
+
+
 class ListFiles(WithFilesCommand):
     name = 'listfiles'
     help = "List all registered files"
@@ -103,4 +134,5 @@ base_commands = [
     HelpCommand,
     VersionCommand,
     ListFiles,
+    Make,
 ]
