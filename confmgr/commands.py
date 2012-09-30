@@ -122,17 +122,27 @@ class Make(WithFilesCommand):
 
 
 class ListFiles(WithFilesCommand):
-    name = 'listfiles'
+    name = 'files'
     help = "List all registered files"
 
     def run(self):
         for filename, _action in sorted(self.active_repository.iter_files()):
-            self.stdout.write('- %s\n' % filename)
+            self.info(filename)
+
+
+class ListCategories(WithFilesCommand):
+    name = 'categories'
+    help = "List all active categories"
+
+    def run(self):
+        for category in sorted(self.active_repository.categories):
+            self.info(category)
 
 
 base_commands = [
     HelpCommand,
     VersionCommand,
     ListFiles,
+    ListCategories,
     Make,
 ]
