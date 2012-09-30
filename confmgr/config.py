@@ -13,6 +13,7 @@ import socket
 
 # Local imports
 from . import action_parser
+from . import actions
 from . import rule_parser
 
 
@@ -23,11 +24,11 @@ class ActionConfig(object):
     SYMLINK = 'symlink'
     PARSE = 'parse'
 
-    ACTIONS = (
-        COPY,
-        SYMLINK,
-        PARSE,
-    )
+    ACTIONS = {
+        COPY: actions.CopyAction,
+        SYMLINK: actions.SymLinkAction,
+        PARSE: actions.FileProcessingAction,
+    }
 
     def __init__(self, action, **options):
         if action not in self.ACTIONS:
@@ -35,6 +36,10 @@ class ActionConfig(object):
                 action, ', '.join(self.ACTIONS)))
         self.action = action
         self.options = options
+
+    def get_action(self, source, destination, fs):
+        action = self.ACTIONS[self.action]
+        return action(source, destination, fs, **self.options)
 
 
 class RepositoryView(object):
