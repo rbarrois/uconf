@@ -14,6 +14,7 @@ import socket
 # Local imports
 from . import action_parser
 from . import actions
+from . import helpers
 from . import rule_parser
 
 

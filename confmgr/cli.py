@@ -24,6 +24,7 @@ import stat
 
 from . import commands
 from . import confhelpers
+from . import helpers
 from . import __version__
 
 
@@ -31,10 +32,6 @@ DEFAULT_PREF_FILES = ('/etc/confmgr.conf', '~/.confmgrrc')
 
 
 Default = confhelpers.Default
-
-
-def get_absolute_path(path):
-    return os.path.abspath(os.path.expanduser(path))
 
 
 class CLI(object):
@@ -103,7 +100,7 @@ class CLI(object):
     def find_repo_root(self, start_folder):
         """Try to find a repository root starting in the current folder."""
         prev = None
-        current = get_absolute_path(start_folder)
+        current = helpers.get_absolute_path(start_folder)
         while prev != current:
             maybe_config = os.path.join(current, '.confmgr')
             if os.access(maybe_config, os.F_OK):
@@ -122,7 +119,7 @@ class CLI(object):
             multi_valued_sections=('files', 'categories', 'actions'))
 
         for pref_file in pref_files:
-            filename = get_absolute_path(pref_file)
+            filename = helpers.get_absolute_path(pref_file)
             if os.access(filename, os.R_OK):
                 with open(filename, 'rt') as f:
                     config.parse(f, name_hint=filename)
@@ -131,9 +128,9 @@ class CLI(object):
 
         # Fill repo_root/repo_config from CLI arguments
         if base_args.root:
-            repo_root = get_absolute_path(base_args.root)
+            repo_root = helpers.get_absolute_path(base_args.root)
         if base_args.repo_config:
-            repo_config_file = get_absolute_path(base_args.repo_config)
+            repo_config_file = helpers.get_absolute_path(base_args.repo_config)
 
         # Try to fill repo_config_file/repo_root from each other
         if repo_config_file and not repo_root:
