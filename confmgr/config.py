@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import unicode_literals
+from __future__ import unicode_literals, absolute_import
 
 """Handle repository-wide configuration.
 
@@ -9,16 +9,16 @@ the repository, regardless of current settings.
 """
 
 
+import fnmatch
 import socket
 
-# Local imports
 from . import action_parser
 from . import actions
 from . import helpers
 from . import rule_parser
 
 
-class ActionConfig(object):
+class FileConfig(object):
     """Definition of the action for a file."""
 
     COPY = 'copy'
@@ -38,9 +38,32 @@ class ActionConfig(object):
         self.action = action
         self.options = options
 
-    def get_action(self, source, destination, fs):
+    def get_action(self, filename, source, destination, fs_config):
         action = self.ACTIONS[self.action]
-        return action(source, destination, fs, **self.options)
+        abs_source = helpers.get_absolute_path(filename, base=source)
+        abs_dest = helpers.get_absolute_path(filename, base=destination)
+        return action(source=abs_source, destination=abs_dest,
+            fs_config=fs_config, **self.options)
+
+    def __repr__(self):
+        return '<FileConfig: %s %r>' % (self.action, self.options)
+
+
+class GlobbingDict(dict):
+    def __getitem__(self, key):
+        for glob, value in self.items():
+            if fnmatch.fnmatchcase(key, glob):
+                return value
+        raise KeyError("Key %s not found in %r" % (key, self))
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __repr__(self):
+        return "GlobbingDict(%s)" % super(GlobbingDict, self).__repr__()
 
 
 class RepositoryView(object):
@@ -61,12 +84,17 @@ class RepositoryView(object):
             if category_rule.test(self.categories):
                 self.categories |= frozenset(extra_categories)
 
-    def iter_files(self, default_action=None):
-        """Retrieve all active files for this view, including actions."""
+    def iter_files(self, default_action='parse'):
+        """Retrieve all active files for this view, including actions.
+        
+        Yields:
+            filename, FileConfig
+        """
+        default_config = FileConfig(default_action)
         for file_rule, filename in self.base.file_rules:
             if file_rule.test(self.categories):
-                action = self.base.file_actions.get(filename, default_action)
-                yield filename, action
+                file_config = self.base.file_configs.get(filename, default_config)
+                yield filename, file_config
 
 
 class Repository(object):
@@ -75,14 +103,14 @@ class Repository(object):
     Attributes:
         categories (str set): all categories
         files (str list): all managed files
-        file_actions (dict(str => ActionConfig)): actions for files
+        file_actions (dict(str => FileConfig)): actions for files
         rule_lexer (rule_parser.RuleLexer): lexer to use for rule parsing
     """
 
     def __init__(self, *args, **kwargs):
         self.category_rules = []
         self.file_rules = []
-        self.file_actions = {}
+        self.file_configs = GlobbingDict()
         self.rule_lexer = rule_parser.RuleLexer()
         self.action_lexer = action_parser.ActionLexer()
 
@@ -105,9 +133,15 @@ class Repository(object):
 
     def _merge_file_actions(self, actions):
         for filename, action_text in actions.items():
-            action, option_text = action_text.strip().split(' ', 1)
-            options = self.action_lexer.parse(option_text)
-            self.file_actions[filename] = ActionConfig(action, **options)
+            action_parts = action_text.strip().split(' ', 1)
+            action = action_parts.pop(0)
+            if action_parts:
+                option_text = action_parts[0]
+                options = self.action_lexer.get_options(option_text)
+            else:
+                options = {}
+
+            self.file_configs[filename] = FileConfig(action, **options)
 
     def fill_from_config(self, config):
         self._merge_category_rules(config['categories'])
