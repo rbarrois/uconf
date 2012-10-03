@@ -1,12 +1,55 @@
 # coding: utf-8
 # Copyright (c) 2010-2012 Raphaël Barrois
 
+from __future__ import unicode_literals, absolute_import
+
 """Abstract the filesystem layer."""
 
 import codecs
+from fs import osfs, multifs, memoryfs
+from fs.wrapfs import readonlyfs
 import io
 import os
 import stat
+
+from . import helpers
+
+
+class FSConfig(object):
+    """Setup for the filesystem layout."""
+    def __init__(self, source_root, target_root, chroot='/', dry_run=False):
+        self.source_root = helpers.get_absolute_path(source_root)
+        self.target_root = helpers.get_absolute_path(target_root, base=source_root)
+        self.chroot = helpers.get_absolute_path(chroot)
+        self.dry_run = dry_run
+
+    def _add_target_fs(self, full_fs, target, dry_run=False):
+        target_fs = helpers.rebase_fs(target, osfs.OSFS(target))
+
+        if dry_run:
+            full_fs.addfs('target',
+                helpers.rebase_fs(target, memory.MemoryFS()),
+                write=True)
+            full_fs.addfs('protected_target', target_fs)
+        else:
+            full_fs.addfs('target', target_fs, write=True)
+
+    def _make_fs(self, target, chroot='/', dry_run=False):
+        """Prepare a fs.FS object."""
+        base_fs = readonlyfs.ReadOnlyFS(osfs.OSFS(chroot))
+        full_fs = multifs.MultiFS()
+
+        self._add_target_fs(full_fs, target, dry_run=dry_run)
+        full_fs.addfs('base', base_fs)
+        return full_fs
+
+    def get_forward_fs(self):
+        wrapped_fs = self._make_fs(self.target_root, self.chroot, self.dry_run)
+        return FileSystem(wrapped_fs)
+
+    def get_backward_fs(self):
+        wrapped_fs = self._make_fs(self.source_root, self.chroot, self.dry_run)
+        return FileSystem(wrapped_fs)
 
 
 class FileSystem(object):
