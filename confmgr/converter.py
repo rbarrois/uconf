@@ -1,6 +1,7 @@
 # coding: utf-8
 # Copyright (c) 2010-2012 Raphaël Barrois
 
+import difflib
 import re
 
 from confmgr import rule_parser
@@ -34,7 +35,7 @@ class FileProcessor(object):
         Yields:
             str: updated lines for the original file
         """
-        original_output = list(self.forward)
+        original_output = list(self.forward(categories))
         diff = Differ(original_output, modified)
         generator = Generator(self.src, categories, self.fs)
         backporter = Backporter(diff, generator)
@@ -53,8 +54,8 @@ class Differ(object):
         modified (str list): lines of the modified file
     """
     def __init__(self, original, modified):
-        self.original = original
-        self.modified = modified
+        self.original = list(original)
+        self.modified = list(modified)
 
     def __iter__(self):
         """Yield atomic diff lines.
@@ -62,7 +63,7 @@ class Differ(object):
         Yields:
             (operation, new_line) tuples.
         """
-        matcher = difflib.SequenceMatcher(a=original_output, b=modified)
+        matcher = difflib.SequenceMatcher(a=self.original, b=self.modified)
         opcodes = matcher.get_opcodes()
         for opcode, original_i, original_j, modified_i, modified_j in opcodes:
             if opcode == 'equal':
