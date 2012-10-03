@@ -70,11 +70,11 @@ class FileContentAction(BaseAction):
 
     def forward_content(self, source_lines, categories):
         """Convert the source file, based on its lines.
-        
+
         Args:
             source_lines (str list): lines of the original file
             categories (str list): active categories
-        
+
         Yields:
             str: lines of the destination file
         """
@@ -89,12 +89,12 @@ class FileContentAction(BaseAction):
 
     def backward_content(self, source_lines, categories, modified_lines):
         """Convert back the modified file, based on its lines.
-        
+
         Args:
             source_lines (str list): lines of the original file
             categories (str list): active categories
             modified_lines (str list): lines of the modified files
-        
+
         Yields:
             str: new lines for the source file
         """

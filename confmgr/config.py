@@ -86,7 +86,7 @@ class RepositoryView(object):
 
     def iter_files(self, default_action='parse'):
         """Retrieve all active files for this view, including actions.
-        
+
         Yields:
             filename, FileConfig
         """
