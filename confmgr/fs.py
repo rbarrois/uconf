@@ -6,7 +6,7 @@ from __future__ import unicode_literals, absolute_import
 """Abstract the filesystem layer."""
 
 import codecs
-from fs import osfs, multifs, memoryfs
+from fs import osfs, multifs, mountfs, memoryfs
 from fs.wrapfs import readonlyfs
 import io
 import os
@@ -22,40 +22,70 @@ class FSConfig(object):
         self.target_root = helpers.get_absolute_path(target_root, base=source_root)
         self.chroot = helpers.get_absolute_path(chroot)
         self.dry_run = dry_run
+        self._forward_fs = self._backward_fs = None
 
-    def _add_target_fs(self, full_fs, target, dry_run=False):
-        target_fs = helpers.rebase_fs(target, osfs.OSFS(target))
+    def get_forward_fs(self, **kwargs):
+        if self._forward_fs is None:
+            self._forward_fs = FileSystem(self.target_root, dry_run=self.dry_run,
+                **kwargs)
+        return self._forward_fs
 
-        if dry_run:
-            full_fs.addfs('target',
-                helpers.rebase_fs(target, memory.MemoryFS()),
-                write=True)
-            full_fs.addfs('protected_target', target_fs)
-        else:
-            full_fs.addfs('target', target_fs, write=True)
-
-    def _make_fs(self, target, chroot='/', dry_run=False):
-        """Prepare a fs.FS object."""
-        base_fs = readonlyfs.ReadOnlyFS(osfs.OSFS(chroot))
-        full_fs = multifs.MultiFS()
-
-        self._add_target_fs(full_fs, target, dry_run=dry_run)
-        full_fs.addfs('base', base_fs)
-        return full_fs
-
-    def get_forward_fs(self):
-        wrapped_fs = self._make_fs(self.target_root, self.chroot, self.dry_run)
-        return FileSystem(wrapped_fs)
-
-    def get_backward_fs(self):
-        wrapped_fs = self._make_fs(self.source_root, self.chroot, self.dry_run)
-        return FileSystem(wrapped_fs)
+    def get_backward_fs(self, **kwargs):
+        if self._backward_fs is None:
+            self._backward_fs = FileSystem(self.source_root, dry_run=self.dry_run,
+                **kwargs)
+        return self._backward_fs
 
 
 class FileSystem(object):
-    def __init__(self, fs, default_encoding=None):
-        self.fs = fs
-        self.default_encoding = default_encoding
+    def __init__(self, *write_paths, **kwargs):
+        self.dry_run = kwargs.pop('dry_run', False)
+        self.default_encoding = kwargs.pop('default_encoding', None)
+        self.write_paths = write_paths
+        self.fs, self.subfs = self._prepare_fs(write_paths, dry_run=self.dry_run)
+
+    def _make_merged_fs(self, paths, memory=False):
+        """Make a (merged) filesystem for a given set of paths.
+
+        If ``memory`` is True, the resulting filesystem will only use
+        memoryfs; otherwise, it will be backed by actual osfs.OSFS.
+
+        Returns:
+            (fs, dict(path => fs)): the resulting filesystem, and a dict mapping
+                each path to the related filesystem
+        """
+        if memory:
+            fs_class = lambda path: memoryfs.MemoryFS()
+        else:
+            fs_class = lambda path: osfs.OSFS(path)
+
+        merged_fs = mountfs.MountFS()
+        filesystems = {}
+        for path in paths:
+            fs = fs_class(path)
+            merged_fs.mount(path, fs)
+            filesystems[path] = fs
+
+        return merged_fs, filesystems
+
+    def _prepare_fs(self, paths, dry_run=False):
+        """Prepare the filesystem for a set of writable paths."""
+        base_fs = multifs.MultiFS()
+        merged_fs, sub_filesystems = self._make_merged_fs(paths)
+        if dry_run:
+            memory_fs, sub_filesystems = self._make_merged_fs(paths, memory=True)
+            base_fs.addfs('memory', memory_fs, write=True)
+
+        base_fs.addfs('targets', merged_fs, write=not dry_run)
+        base_fs.addfs('base', readonlyfs.ReadOnlyFS(osfs.OSFS('/')))
+
+        return base_fs, sub_filesystems
+
+    def get_changes(self):
+        if self.dry_run:
+            for path, fs in self.subfs.items():
+                for subpath in fs.ilistdir(full=True):
+                    yield path, subpath
 
     def __getattr__(self, name):
         return getattr(self.fs, name)
