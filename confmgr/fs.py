@@ -60,6 +60,11 @@ class FileSystem(object):
     def __getattr__(self, name):
         return getattr(self.fs, name)
 
+    def copy(self, source, destination, allow_overwrite=True):
+        needs_overwrite = self.exists(destination)
+        overwrite = needs_overwrite and allow_overwrite
+        return self.fs.copy(source, destination, overwrite=overwrite)
+
     def open(self, filename, mode='r', encoding=None, **kwargs):
         encoding = encoding or self.default_encoding
 

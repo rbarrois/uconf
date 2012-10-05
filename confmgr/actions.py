@@ -64,10 +64,10 @@ class BaseAction(object):
 
 class CopyAction(BaseAction):
     def _forward(self, categories):
-        self.fs.copy(self.source, self.destination, overwrite=True)
+        self.fs.copy(self.source, self.destination)
 
     def _backward(self, categories):
-        self.fs.copy(self.destination, self.source, overwrite=True)
+        self.fs.copy(self.destination, self.source)
 
 
 class SymLinkAction(BaseAction):
