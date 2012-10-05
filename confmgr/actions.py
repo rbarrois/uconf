@@ -1,11 +1,29 @@
 # coding: utf-8
 # Copyright (c) 2010-2012 Raphaël Barrois
 
+from __future__ import absolute_import, unicode_literals
+
 """Common action code."""
 
+import fs.errors
+import functools
 import os.path
 
 from . import converter
+
+
+def catch_fs_exceptions(fun):
+    @functools.wraps(fun)
+    def decorated(self, *args, **kwargs):
+        try:
+            return fun(self, *args, **kwargs)
+        except fs.errors.FSError as e:
+            print("Error while performing %s.%s(%s -> %s): %s" % (
+                self.__class__.__name__, fun.__name__,
+                self.source, self.destination,
+                e))
+            raise
+    return decorated
 
 
 class BaseAction(object):
@@ -16,6 +34,7 @@ class BaseAction(object):
         self.fs_config = fs_config
         self.fs = None
 
+    @catch_fs_exceptions
     def forward(self, categories):
         """Apply the action."""
         self.fs = self.fs_config.get_forward_fs()
@@ -25,6 +44,7 @@ class BaseAction(object):
     def _forward(self, categories):
         raise NotImplementedError()
 
+    @catch_fs_exceptions
     def backward(self, categories):
         """Revert the action."""
         self.fs = self.fs_config.get_backward_fs()
