@@ -45,10 +45,7 @@ class CLI(object):
 
     def __init__(self, progname):
         self.progname = progname
-        self.base_parser = self.make_base_parser(self.progname)
-        self.parser = argparse.ArgumentParser(prog=self.progname,
-            parents=[self.base_parser],
-            argument_default=Default(None))
+        self.parser = self.make_base_parser(self.progname)
         self.subparsers = self.parser.add_subparsers(help="Commands")
 
         self.register_base_commands()
@@ -57,18 +54,20 @@ class CLI(object):
     # -------------------
 
     def make_base_parser(self, progname):
-        parser = argparse.ArgumentParser(prog=self.progname, add_help=False)
-        parser.add_argument('--root', '-r', help="Set confmgr repository root")
-        parser.add_argument('--repo-config', '-c',
-            help="Use repository configuration file at REPO_CONFIG")
-        parser.add_argument('--prefs', '-p', nargs='*', default=DEFAULT_PREF_FILES,
-            help="Read user preferences from PREF files", metavar='PREF')
+        parser = argparse.ArgumentParser(prog=self.progname,
+            argument_default=Default(None))
         parser.add_argument('--version', '-V', help="Display version", action='version',
             version='%(prog)s ' + __version__)
         return parser
 
     def register_options(self, parser):
         """Register global options"""
+        parser.add_argument('--root', '-r', help="Set confmgr repository root")
+        parser.add_argument('--config-dir', '-c', help="Use confmgr config dir CONFIG_DIR")
+        parser.add_argument('--prefs', '-p', nargs='*', default=DEFAULT_PREF_FILES,
+            help="Read user preferences from PREF files", metavar='PREF')
+        parser.add_argument('--version', '-V', help="Display version", action='version',
+            version='%(prog)s ' + __version__)
         parser.add_argument('--dry-run', '-n', help="Pretend to run the actions",
             action="store_true", default=False)
         parser.add_argument('--initial', '-i', nargs='*',
@@ -83,7 +82,6 @@ class CLI(object):
     def register_command(self, command_class):
         """Register a new command from its class."""
         cmd_parser = self.subparsers.add_parser(command_class.get_name(),
-            parents=[self.base_parser],
             help=command_class.get_help())
         self.register_options(cmd_parser)
         command_class.register_options(cmd_parser)
@@ -124,21 +122,26 @@ class CLI(object):
                 with open(filename, 'rt') as f:
                     config.parse(f, name_hint=filename)
 
-        repo_root = repo_config_file = None
+        repo_root = config_dir = None
 
         # Fill repo_root/repo_config from CLI arguments
         if base_args.root:
             repo_root = helpers.get_absolute_path(base_args.root)
-        if base_args.repo_config:
-            repo_config_file = helpers.get_absolute_path(base_args.repo_config)
+        if base_args.config_dir:
+            config_dir = helpers.get_absolute_path(base_args.config_dir)
 
         # Try to fill repo_config_file/repo_root from each other
-        if repo_config_file and not repo_root:
-            repo_root = os.path.dirname(repo_config_file)
+        if config_dir and not repo_root:
+            repo_root = os.path.dirname(config_dir)
         if not repo_root:
             repo_root = self.find_repo_root(os.getcwd())
-        if repo_root and not repo_config_file:
-            repo_config_file = os.path.join(repo_root, '.confmgr', 'config')
+        if repo_root and not config_dir:
+            config_dir = os.path.join(repo_root, '.confmgr')
+
+        if config_dir:
+            repo_config_file = os.path.join(config_dir, 'config')
+        else:
+            repo_config_file = ''
 
         # Read configuration from repo config file, if available
         if repo_config_file and os.access(repo_config_file, os.R_OK):
@@ -150,7 +153,7 @@ class CLI(object):
         base_args.prefs = config
         base_args.root = repo_root
 
-    def make_command_config(self, base_args, command_args, command_class):
+    def make_command_config(self, args, command_class):
         """Prepare the (merged) options pseudo-dict for a given command.
 
         Uses, in turn:
@@ -159,11 +162,10 @@ class CLI(object):
             - command-specific configuration file options
             - global configuration file options
         """
-        prefs = base_args.prefs
+        prefs = args.prefs
 
         return confhelpers.MergedConfig(
-            confhelpers.DictNamespace(command_args),
-            confhelpers.DictNamespace(base_args),
+            confhelpers.DictNamespace(args),
             confhelpers.NormalizedDict(prefs[command_class.get_name()]),
             confhelpers.NormalizedDict(prefs['core']),
         )
@@ -173,19 +175,16 @@ class CLI(object):
 
     def run_from_argv(self, argv):
         """Actually run the requested command from the argv."""
-        # Fetch base settings
-        base_args, _extra = self.base_parser.parse_known_args(argv)
-        self.extract_config(base_args)
-
         # Add command-specific arguments
         args = self.parser.parse_args(argv)
+        self.extract_config(args)
         command_class = args.command
 
         # Merge all pref bits
-        prefs = self.make_command_config(base_args, args, command_class)
+        prefs = self.make_command_config(args, command_class)
 
         # Build and run the command
-        cmd = command_class(prefs, base_args.repo_config, self.parser)
+        cmd = command_class(prefs, args.repo_config, self.parser)
         return cmd.run()
 
 
