@@ -25,11 +25,9 @@ import stat
 from . import commands
 from . import config
 from . import confhelpers
+from . import constants
 from . import helpers
 from . import __version__
-
-
-DEFAULT_PREF_FILES = ('/etc/confmgr.conf', '~/.confmgrrc')
 
 
 Default = confhelpers.Default
@@ -65,7 +63,7 @@ class CLI(object):
         """Register global options"""
         parser.add_argument('--root', '-r', help="Set confmgr repository root")
         parser.add_argument('--config-dir', '-c', help="Use confmgr config dir CONFIG_DIR")
-        parser.add_argument('--prefs', '-p', nargs='*', default=DEFAULT_PREF_FILES,
+        parser.add_argument('--prefs', '-p', nargs='*', default=constants.CONFIG_FILES,
             help="Read user preferences from PREF files", metavar='PREF')
         parser.add_argument('--version', '-V', help="Display version", action='version',
             version='%(prog)s ' + __version__)
