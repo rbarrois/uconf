@@ -14,6 +14,14 @@ from . import helpers
 from .confhelpers import Default
 
 
+class ConfmgrError(Exception):
+    pass
+
+
+class ConfigError(ConfmgrError):
+    pass
+
+
 class BaseCommand(object):
     """Base command object."""
     name = ''
@@ -25,6 +33,12 @@ class BaseCommand(object):
 
     @classmethod
     def get_name(cls):
+        """Retrieve the name of the command.
+
+        Will try in order:
+        - ``name`` attribute
+        - lowercase class name, stripping the 'command' part.
+        """
         if cls.name:
             return cls.name
         name = cls.__name__.lower()
@@ -34,23 +48,36 @@ class BaseCommand(object):
 
     @classmethod
     def get_help(cls):
+        """Retrieve the help text for a command.
+
+        If the ``help`` attribute is empty, use the class' docstring.
+        """
         if cls.help:
             return cls.help
         else:
             return cls.__doc__
 
-    def __init__(self, options, repo_config, parser):
-        self.options = options
-        self.repo_config = repo_config
+    required_config_fields = ()
+
+    def __init__(self, env, parser):
+        self.env = env
         self.parser = parser
 
         self.stdout = sys.stdout
         self.stderr = sys.stderr
 
+        self.check_required_config()
+
+    def check_required_config(self):
+        for field in self.required_config_fields:
+            if not self.env.isset(field):
+                raise ConfigError("Field '%s' must be set, either in config files "
+                    "or through command-line arguments." % field)
+
     def warning(self, message, *args):
         self.stderr.write(message % args)
         self.stderr.write('\n')
-        if self.options.strict:
+        if self.options.get('strict', False):
             self.stderr.write("Strict mode: aborting.\n")
             raise SystemExit(1)
 
@@ -85,20 +112,18 @@ class WithRepoCommand(BaseCommand):
 
     def __init__(self, *args, **kwargs):
         super(WithRepoCommand, self).__init__(*args, **kwargs)
-        self.repository = config.Repository()
-        self.repository.fill_from_config(self.repo_config)
 
-        initial_cats = self.options.get_tuple('initial',
+        initial_cats = self.env.getlist('initial',
             (socket.getfqdn(), socket.gethostname()))
-        self.active_repository = self.repository.extract(initial_cats)
+        self.active_repository = self.env.get_active_repository(initial_cats)
         self.fs_config = self._get_fs_config()
 
     def _get_fs_config(self):
         return fs.FSConfig(
-            source_root=self.options.get('root'),
-            target_root=self.options.get('target'),
-            chroot=self.options.get('chroot', '/'),
-            dry_run=self.options.get('dry_run', False),
+            source_root=self.env.root,
+            target_root=self.env.get('target'),
+            chroot=self.env.get('chroot', '/'),
+            dry_run=self.env.get('dry_run', False),
         )
 
     def _get_files(self, files):
@@ -107,7 +132,7 @@ class WithRepoCommand(BaseCommand):
         If no filename was provided, return all files.
         """
         all_files = self.active_repository.iter_files(
-            default_action=self.options.get('default_file_action', 'parse'))
+            default_action=self.env.get('default_file_action', 'parse'))
 
         return helpers.filter_iter(all_files, files,
             key=lambda filename, _config: filename, empty_is_all=True)
@@ -129,6 +154,8 @@ class Make(WithRepoCommand):
     name = 'make'
     help = "Build and install one or more files."
 
+    required_config_fields = ('target',)
+
     @classmethod
     def register_options(cls, parser):
         parser.add_argument('files', nargs='*', default=Default(tuple()),
@@ -137,7 +164,7 @@ class Make(WithRepoCommand):
 
     def run(self):
         categories = self.active_repository.categories
-        for filename, action in self._get_actions(self.options.get('files')):
+        for filename, action in self._get_actions(self.env.get('files')):
             self.info("Processing %s (%s)", filename, action.__class__.__name__)
             action.forward(categories)
 
@@ -148,6 +175,8 @@ class Back(WithRepoCommand):
     name = 'back'
     help = "Build and install one or more files."
 
+    required_config_fields = ('target',)
+
     @classmethod
     def register_options(cls, parser):
         parser.add_argument('files', nargs='*', default=Default(tuple()),
@@ -156,7 +185,7 @@ class Back(WithRepoCommand):
 
     def run(self):
         categories = self.active_repository.categories
-        for filename, action in self._get_actions(self.options.get('files')):
+        for filename, action in self._get_actions(self.env.get('files')):
             self.info("Processing %s (%s)", filename, action.__class__.__name__)
             action.backward(categories)
 

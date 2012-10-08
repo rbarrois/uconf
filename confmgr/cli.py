@@ -23,6 +23,7 @@ import os
 import stat
 
 from . import commands
+from . import config
 from . import confhelpers
 from . import helpers
 from . import __version__
@@ -162,12 +163,10 @@ class CLI(object):
             - command-specific configuration file options
             - global configuration file options
         """
-        prefs = args.prefs
-
-        return confhelpers.MergedConfig(
-            confhelpers.DictNamespace(args),
-            confhelpers.NormalizedDict(prefs[command_class.get_name()]),
-            confhelpers.NormalizedDict(prefs['core']),
+        return config.Env.from_files(
+            repo_root=args.root or os.getcwd(),
+            sections=(command_class.get_name(),),
+            extra=confhelpers.DictNamespace(args),
         )
 
     # Running commands
@@ -177,14 +176,13 @@ class CLI(object):
         """Actually run the requested command from the argv."""
         # Add command-specific arguments
         args = self.parser.parse_args(argv)
-        self.extract_config(args)
         command_class = args.command
 
         # Merge all pref bits
-        prefs = self.make_command_config(args, command_class)
+        env = self.make_command_config(args, command_class)
 
         # Build and run the command
-        cmd = command_class(prefs, args.repo_config, self.parser)
+        cmd = command_class(env, self.parser)
         return cmd.run()
 
 

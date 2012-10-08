@@ -19,7 +19,9 @@ class FSConfig(object):
     """Setup for the filesystem layout."""
     def __init__(self, source_root, target_root, chroot='/', dry_run=False):
         self.source_root = helpers.get_absolute_path(source_root)
-        self.target_root = helpers.get_absolute_path(target_root, base=source_root)
+        if target_root:
+            target_root = helpers.get_absolute_path(target_root, base=source_root)
+        self.target_root = target_root
         self.chroot = helpers.get_absolute_path(chroot)
         self.dry_run = dry_run
         self._forward_fs = self._backward_fs = None
