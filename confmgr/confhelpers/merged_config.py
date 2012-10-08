@@ -75,7 +75,9 @@ class MergedConfig(object):
         for option in options:
             self.add_options(option)
 
-    def add_options(self, options):
+    def add_options(self, options, normalize=True):
+        if normalize:
+            options = NormalizedDict(options)
         self.options.append(options)
 
     def get(self, key, default=NoDefault):
@@ -109,7 +111,10 @@ class MergedConfig(object):
             else:
                 return value
 
-        return defaults[0]
+        if defaults:
+            return defaults[0]
+
+        return NoDefault
 
     def get_tuple(self, key, default=(), separator=' '):
         value = self.get(key, default)
