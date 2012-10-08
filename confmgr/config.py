@@ -172,6 +172,10 @@ class Env(object):
         self.repository = repository
         self.config = config
 
+    @property
+    def confmgr_dir(self):
+        return os.path.join(self.root, constants.REPO_SUBFOLDER)
+
     def isset(self, key):
         """Check whether a non-default has been set for a given key."""
         value = self.get(key, default=confhelpers.NoDefault)
@@ -192,6 +196,9 @@ class Env(object):
 
     def get_backward_fs(self):
         return fs.FileSystem(self.root, dry_run=self.get('dry_run', False))
+
+    def get_repo_fs(self):
+        return fs.FileSystem(self.confmgr_dir, dry_run=self.get('dry_run', False))
 
     @classmethod
     def _walk_root(cls, base):

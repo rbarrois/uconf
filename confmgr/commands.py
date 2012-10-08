@@ -4,6 +4,7 @@
 
 from __future__ import unicode_literals
 
+import os.path
 import socket
 import sys
 
@@ -107,6 +108,19 @@ class VersionCommand(BaseCommand):
             prog=self.parser.prog, version=__version__))
 
 
+class Init(BaseCommand):
+    name = 'init'
+    help = "Setup a new confmgr repository"
+
+    required_config_fields = ('root',)
+
+    def run(self):
+        self.env.root = self.env.get('root')
+        fs = self.env.get_repo_fs()
+        fs.makedir(env.confmgr_dir, recursive=True, allow_recreate=True)
+        fs.writelines(os.path.join(env.confmgr_dir, 'config'), [])
+
+
 class WithRepoCommand(BaseCommand):
     """Enhanced base command class with list of rules already parsed."""
 
@@ -197,6 +211,7 @@ class ListCategories(WithRepoCommand):
 base_commands = [
     HelpCommand,
     VersionCommand,
+    Init,
     ListFiles,
     ListCategories,
     Make,
