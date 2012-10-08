@@ -12,7 +12,12 @@ unusual keys: "foo and bar: baz".
 """
 
 
+import os
 import re
+
+
+class ConfigReadingError(Exception):
+    pass
 
 
 class BaseSection(object):
@@ -74,6 +79,20 @@ class ConfigReader(object):
     def enter_section(self, name):
         self.current_section = self[name]
         return self.current_section
+
+    def parse_file(self, filename, skip_unreadable=False):
+        """Parse a file from its name (instead of fds).
+
+        If skip_unreadable is False and the file can't be read, will raise a
+        ConfigReadingError.
+        """
+        if not os.access(filename, os.R_OK):
+            if skip_unreadable:
+                return
+            raise ConfigReadingError("Unable to open file %s." % filename)
+        with open(filename, 'rt') as f:
+            return self.parse(f, name_hint=filename)
+
 
     def parse(self, f, name_hint=''):
         self.enter_section('core')

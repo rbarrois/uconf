@@ -5,4 +5,5 @@ from __future__ import unicode_literals
 
 
 from .configreader import ConfigReader
-from .merged_config import Default, NormalizedDict, DictNamespace, MergedConfig
+from .merged_config import Default, NoDefault
+from .merged_config import NormalizedDict, DictNamespace, MergedConfig
