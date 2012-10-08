@@ -43,10 +43,25 @@ class FileConfig(object):
         self.action = action
         self.options = options
 
+    def get_destination(self, filename, target):
+        """Find the appropriate target for a file."""
+        if 'dest' in self.options:
+            # Explicit target path
+            destination = self.options['dest']
+        elif 'destdir' in self.options:
+            # Replaced destination folder
+            destination = os.path.join(self.options['destdir'],
+                os.path.basename(filename))
+        else:
+            destination = filename
+
+        return helpers.get_absolute_path(destination, base=target)
+
     def get_action(self, filename, env):
         action = self.ACTIONS[self.action]
         abs_source = helpers.get_absolute_path(filename, base=env.root)
-        abs_dest = helpers.get_absolute_path(filename, base=env.get('target'))
+        abs_dest = self.get_destination(filename, env.get('target'))
+
         return action(source=abs_source, destination=abs_dest,
             env=env, **self.options)
 
