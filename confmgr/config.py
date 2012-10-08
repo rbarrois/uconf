@@ -199,15 +199,15 @@ class Env(object):
 
         Stops at the first folder containing a '.confmgr' subdirectory.
         """
+        current = helpers.get_absolute_path(base)
         prev = None
-        base = helpers.get_absolute_path(base)
-        while prev != base:
-            maybe_config = os.path.join(base, constants.REPO_SUBFOLDER)
+        while prev != current:
+            maybe_config = os.path.join(current, constants.REPO_SUBFOLDER)
             if os.access(maybe_config, os.F_OK):
                 dirmode = os.stat(maybe_config).st_mode
                 if stat.S_ISDIR(dirmode):
-                    return base
-            prev, base = base, os.path.dirname(base)
+                    return current
+            prev, current = current, os.path.dirname(current)
 
     @classmethod
     def _read_config(cls, repo_root=None, config_files=constants.CONFIG_FILES):
