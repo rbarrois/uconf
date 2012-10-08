@@ -10,10 +10,14 @@ the repository, regardless of current settings.
 
 
 import fnmatch
+import os
 import socket
+import stat
 
 from . import action_parser
 from . import actions
+from . import confhelpers
+from . import constants
 from . import helpers
 from . import rule_parser
 
@@ -96,6 +100,10 @@ class RepositoryView(object):
                 file_config = self.base.file_configs.get(filename, default_config)
                 yield filename, file_config
 
+    def get_action(self, filename, default_action='parse'):
+        default_config = FileConfig(default_action)
+        return self.base.file_configs.get(filename, default_config)
+
 
 class Repository(object):
     """Holds repository configuration.
@@ -148,3 +156,102 @@ class Repository(object):
         self._merge_file_rules(config['files'])
         self._merge_file_actions(config['actions'])
 
+
+class Env(object):
+    """Holds all configuration for the current environment.
+
+    Attributes:
+        repository (Repository): the parsed view of the active repository
+        active_repository (RepositoryView): the active repository view
+        prefs (MergedConfig): active configuration directives
+    """
+
+    def __init__(self, root, repository, config):
+        self.root = root
+        self.repository = repository
+        self.config = config
+
+    def isset(self, key):
+        """Check whether a non-default has been set for a given key."""
+        value = self.get(key, default=confhelpers.NoDefault)
+        return value != confhelpers.NoDefault
+
+    def get(self, key, default=None):
+        return self.config.get(key, default)
+
+    def getlist(self, key, default=(), separator=' '):
+        return self.config.get_tuple(key, default=default, separator=separator)
+
+    def get_active_repository(self, initial_cats):
+        # TODO(rbarrois): consider memoizing
+        return self.repository.extract(initial_cats)
+
+    @classmethod
+    def _walk_root(cls, base):
+        """Walk to the top of a directory tree until a repository root is found.
+
+        Stops at the first folder containing a '.confmgr' subdirectory.
+        """
+        prev = None
+        base = helpers.get_absolute_path(base)
+        while prev != base:
+            maybe_config = os.path.join(base, constants.REPO_SUBFOLDER)
+            if os.access(maybe_config, os.F_OK):
+                dirmode = os.stat(maybe_config).st_mode
+                if stat.S_ISDIR(dirmode):
+                    return base
+            prev, base = base, os.path.dirname(base)
+
+    @classmethod
+    def _read_config(cls, repo_root=None, config_files=constants.CONFIG_FILES):
+        """Read all relevant config files."""
+        if repo_root:
+            repo_root = cls._walk_root(repo_root)
+
+        config = confhelpers.ConfigReader(
+            multi_valued_sections=('files', 'categories', 'actions'))
+
+        for config_file in config_files:
+            config_file = helpers.get_absolute_path(config_file)
+            config.parse_file(config_file, skip_unreadable=True)
+
+        if repo_root:
+            repo_config = os.path.join(repo_root,
+                constants.REPO_SUBFOLDER, 'config')
+            config.parse_file(repo_config, skip_unreadable=False)
+
+        return repo_root, config
+
+    @classmethod
+    def _merge_config(cls, config, sections=(), extra=None):
+        merged = confhelpers.MergedConfig()
+        if extra is not None:
+            merged.add_options(extra)
+
+        for section in sections:
+            merged.add_options(config[section])
+
+        merged.add_options(config['core'])
+
+        return merged
+
+    @classmethod
+    def from_files(cls, repo_root=None, config_files=constants.CONFIG_FILES,
+            sections=(), extra=None):
+        """Build a Env from basic informations:
+
+        - Path to a repository root
+        - List of global configuration files to read
+        - List of configuration sections to take into account
+        - Dict of extra configuration values
+        """
+
+        repo_root, config = cls._read_config(repo_root=repo_root,
+                config_files=config_files)
+
+        repo = Repository(root=repo_root)
+        repo.fill_from_config(config)
+
+        config = cls._merge_config(config, sections=sections, extra=extra)
+
+        return cls(root=repo_root, config=config, repository=repo)
