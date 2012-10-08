@@ -47,14 +47,15 @@ class NormalizedDict(dict):
 
     def __init__(self, *args, **kwargs):
         d = dict(*args, **kwargs)
-        super(NormalizedDict, self).__init__(
-            (normalize_key(k), v) for k, v in d.items())
+        super(NormalizedDict, self).__init__()
+        for k, v in d.items():
+            self[k] = v
 
     def __getitem__(self, key):
         return super(NormalizedDict, self).__getitem__(normalize_key(key))
 
     def __setitem__(self, key, value):
-        self[normalize_key(key)] = value
+        super(NormalizedDict, self).__setitem__(normalize_key(key), value)
 
 
 class DictNamespace(object):
