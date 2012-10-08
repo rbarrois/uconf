@@ -94,64 +94,6 @@ class CLI(object):
     # Reading configuration
     # ----------------------
 
-    def find_repo_root(self, start_folder):
-        """Try to find a repository root starting in the current folder."""
-        prev = None
-        current = helpers.get_absolute_path(start_folder)
-        while prev != current:
-            maybe_config = os.path.join(current, '.confmgr')
-            if os.access(maybe_config, os.F_OK):
-                dirmode = os.stat(maybe_config).st_mode
-                if stat.S_ISDIR(dirmode):
-                    return current
-            prev, current = current, os.path.dirname(current)
-
-    def extract_config(self, base_args):
-        """Retrieve and merge the various 'user-preference' config files."""
-
-        # Merge preferences
-        pref_files = base_args.prefs
-
-        config = confhelpers.ConfigReader(
-            multi_valued_sections=('files', 'categories', 'actions'))
-
-        for pref_file in pref_files:
-            filename = helpers.get_absolute_path(pref_file)
-            if os.access(filename, os.R_OK):
-                with open(filename, 'rt') as f:
-                    config.parse(f, name_hint=filename)
-
-        repo_root = config_dir = None
-
-        # Fill repo_root/repo_config from CLI arguments
-        if base_args.root:
-            repo_root = helpers.get_absolute_path(base_args.root)
-        if base_args.config_dir:
-            config_dir = helpers.get_absolute_path(base_args.config_dir)
-
-        # Try to fill repo_config_file/repo_root from each other
-        if config_dir and not repo_root:
-            repo_root = os.path.dirname(config_dir)
-        if not repo_root:
-            repo_root = self.find_repo_root(os.getcwd())
-        if repo_root and not config_dir:
-            config_dir = os.path.join(repo_root, '.confmgr')
-
-        if config_dir:
-            repo_config_file = os.path.join(config_dir, 'config')
-        else:
-            repo_config_file = ''
-
-        # Read configuration from repo config file, if available
-        if repo_config_file and os.access(repo_config_file, os.R_OK):
-            with open(repo_config_file, 'rt') as f:
-                config.parse(f, name_hint=os.path.basename(repo_config_file))
-
-        # Update base_args
-        base_args.repo_config = config
-        base_args.prefs = config
-        base_args.root = repo_root
-
     def make_command_config(self, args, command_class):
         """Prepare the (merged) options pseudo-dict for a given command.
 
