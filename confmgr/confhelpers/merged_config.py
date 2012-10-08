@@ -58,32 +58,11 @@ class NormalizedDict(dict):
         super(NormalizedDict, self).__setitem__(normalize_key(key), value)
 
 
-class DictNamespace(object):
+class DictNamespace(dict):
     """Convert a 'Namespace' into a dict-like object."""
 
     def __init__(self, ns):
-        self.ns = ns
-
-    def get(self, key, default=NoDefault):
-        try:
-            return self[key]
-        except KeyError:
-            if default is NoDefault:
-                raise
-            return default
-
-    def __getitem__(self, key):
-        key = normalize_key(key)
-        try:
-            return getattr(self.ns, key)
-        except AttributeError as e:
-            raise KeyError(str(e))
-
-    def __hash__(self):
-        return hash((self.__class__, self.ns))
-
-    def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.ns)
+        return super(DictNamespace, self).__init__(vars(ns))
 
 
 class MergedConfig(object):
