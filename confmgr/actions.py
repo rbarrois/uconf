@@ -28,7 +28,6 @@ def catch_fs_exceptions(fun):
 
 class BaseAction(object):
     def __init__(self, source, destination, env, **kwargs):
-        super(BaseAction, self).__init__(**kwargs)
         self.source = source
         self.destination = destination
         self.env = env
