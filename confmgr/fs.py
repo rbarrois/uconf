@@ -15,30 +15,6 @@ import stat
 from . import helpers
 
 
-class FSConfig(object):
-    """Setup for the filesystem layout."""
-    def __init__(self, source_root, target_root, chroot='/', dry_run=False):
-        self.source_root = helpers.get_absolute_path(source_root)
-        if target_root:
-            target_root = helpers.get_absolute_path(target_root, base=source_root)
-        self.target_root = target_root
-        self.chroot = helpers.get_absolute_path(chroot)
-        self.dry_run = dry_run
-        self._forward_fs = self._backward_fs = None
-
-    def get_forward_fs(self, **kwargs):
-        if self._forward_fs is None:
-            self._forward_fs = FileSystem(self.target_root, dry_run=self.dry_run,
-                **kwargs)
-        return self._forward_fs
-
-    def get_backward_fs(self, **kwargs):
-        if self._backward_fs is None:
-            self._backward_fs = FileSystem(self.source_root, dry_run=self.dry_run,
-                **kwargs)
-        return self._backward_fs
-
-
 class FileSystem(object):
     def __init__(self, *write_paths, **kwargs):
         self.dry_run = kwargs.pop('dry_run', False)

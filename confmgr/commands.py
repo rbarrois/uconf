@@ -116,15 +116,6 @@ class WithRepoCommand(BaseCommand):
         initial_cats = self.env.getlist('initial',
             (socket.getfqdn(), socket.gethostname()))
         self.active_repository = self.env.get_active_repository(initial_cats)
-        self.fs_config = self._get_fs_config()
-
-    def _get_fs_config(self):
-        return fs.FSConfig(
-            source_root=self.env.root,
-            target_root=self.env.get('target'),
-            chroot=self.env.get('chroot', '/'),
-            dry_run=self.env.get('dry_run', False),
-        )
 
     def _get_files(self, files):
         """Retrieve file config for a set of file names.
@@ -139,12 +130,7 @@ class WithRepoCommand(BaseCommand):
 
     def _get_actions(self, files):
         for filename, file_config in self._get_files(files):
-            action = file_config.get_action(
-                filename,
-                source=self.fs_config.source_root,
-                destination=self.fs_config.target_root,
-                fs_config=self.fs_config,
-            )
+            action = file_config.get_action(filename, env=self.env)
             yield filename, action
 
 

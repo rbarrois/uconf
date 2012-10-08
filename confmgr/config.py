@@ -18,6 +18,7 @@ from . import action_parser
 from . import actions
 from . import confhelpers
 from . import constants
+from . import fs
 from . import helpers
 from . import rule_parser
 
@@ -42,12 +43,12 @@ class FileConfig(object):
         self.action = action
         self.options = options
 
-    def get_action(self, filename, source, destination, fs_config):
+    def get_action(self, filename, env):
         action = self.ACTIONS[self.action]
-        abs_source = helpers.get_absolute_path(filename, base=source)
-        abs_dest = helpers.get_absolute_path(filename, base=destination)
+        abs_source = helpers.get_absolute_path(filename, base=env.root)
+        abs_dest = helpers.get_absolute_path(filename, base=env.get('target'))
         return action(source=abs_source, destination=abs_dest,
-            fs_config=fs_config, **self.options)
+            env=env, **self.options)
 
     def __repr__(self):
         return '<FileConfig: %s %r>' % (self.action, self.options)
@@ -162,8 +163,8 @@ class Env(object):
 
     Attributes:
         repository (Repository): the parsed view of the active repository
-        active_repository (RepositoryView): the active repository view
-        prefs (MergedConfig): active configuration directives
+        root (str): the path to the repository root
+        config (MergedConfig): active configuration directives
     """
 
     def __init__(self, root, repository, config):
@@ -185,6 +186,12 @@ class Env(object):
     def get_active_repository(self, initial_cats):
         # TODO(rbarrois): consider memoizing
         return self.repository.extract(initial_cats)
+
+    def get_forward_fs(self):
+        return fs.FileSystem(self.get('target'), dry_run=self.get('dry_run', False))
+
+    def get_backward_fs(self):
+        return fs.FileSystem(self.root, dry_run=self.get('dry_run', False))
 
     @classmethod
     def _walk_root(cls, base):

@@ -27,17 +27,17 @@ def catch_fs_exceptions(fun):
 
 
 class BaseAction(object):
-    def __init__(self, source, destination, fs_config, **kwargs):
+    def __init__(self, source, destination, env, **kwargs):
         super(BaseAction, self).__init__(**kwargs)
         self.source = source
         self.destination = destination
-        self.fs_config = fs_config
+        self.env = env
         self.fs = None
 
     @catch_fs_exceptions
     def forward(self, categories):
         """Apply the action."""
-        self.fs = self.fs_config.get_forward_fs()
+        self.fs = self.env.get_forward_fs()
         self._ensure_dir_exists(self.destination)
         self._forward(categories)
 
@@ -47,7 +47,7 @@ class BaseAction(object):
     @catch_fs_exceptions
     def backward(self, categories):
         """Revert the action."""
-        self.fs = self.fs_config.get_backward_fs()
+        self.fs = self.env.get_backward_fs()
         self._ensure_dir_exists(self.source)
         self._backward(categories)
 
