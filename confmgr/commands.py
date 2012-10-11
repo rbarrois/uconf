@@ -12,6 +12,7 @@ from . import __version__
 from . import config
 from . import fs
 from . import helpers
+from . import porcelain
 from .confhelpers import Default
 
 
@@ -136,16 +137,9 @@ class WithRepoCommand(BaseCommand):
 
         If no filename was provided, return all files.
         """
-        all_files = self.active_repository.iter_files(
-            default_action=self.env.get('default_file_action', 'parse'))
+        all_files = self.active_repository.iter_files()
 
-        return helpers.filter_iter(all_files, files,
-            key=lambda filename, _config: filename, empty_is_all=True)
-
-    def _get_actions(self, files):
-        for filename, file_config in self._get_files(files):
-            action = file_config.get_action(filename, env=self.env)
-            yield filename, action
+        return helpers.filter_iter(all_files, files, empty_is_all=True)
 
 
 class Make(WithRepoCommand):
@@ -163,10 +157,10 @@ class Make(WithRepoCommand):
         super(Make, cls).register_options(parser)
 
     def run(self):
-        categories = self.active_repository.categories
-        for filename, action in self._get_actions(self.env.get('files')):
-            self.info("Processing %s (%s)", filename, action.__class__.__name__)
-            action.forward(categories)
+        p = porcelain.MakeFile(self.env, self.active_repository)
+        for filename in self._get_files(self.env.get('files')):
+            self.info("Processing %s", filename)
+            p.handle(filename)
 
 
 class Back(WithRepoCommand):
@@ -184,10 +178,10 @@ class Back(WithRepoCommand):
         super(Back, cls).register_options(parser)
 
     def run(self):
-        categories = self.active_repository.categories
-        for filename, action in self._get_actions(self.env.get('files')):
-            self.info("Processing %s (%s)", filename, action.__class__.__name__)
-            action.backward(categories)
+        p = porcelain.BackFile(self.env, self.active_repository)
+        for filename in self._get_files(self.env.get('files')):
+            self.info("Processing %s", filename)
+            p.handle(filename)
 
 
 class ListFiles(WithRepoCommand):

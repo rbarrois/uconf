@@ -104,19 +104,17 @@ class RepositoryView(object):
             if category_rule.test(self.categories):
                 self.categories |= frozenset(extra_categories)
 
-    def iter_files(self, default_action='parse'):
-        """Retrieve all active files for this view, including actions.
+    def iter_files(self):
+        """Retrieve all active files for this view
 
         Yields:
-            filename, FileConfig
+            filename
         """
-        default_config = FileConfig(default_action)
         for file_rule, filename in self.base.file_rules:
             if file_rule.test(self.categories):
-                file_config = self.base.file_configs.get(filename, default_config)
-                yield filename, file_config
+                yield filename
 
-    def get_action(self, filename, default_action='parse'):
+    def get_file_config(self, filename, default_action='parse'):
         default_config = FileConfig(default_action)
         return self.base.file_configs.get(filename, default_config)
 
