@@ -35,7 +35,11 @@ class Porcelain(object):
 
 class FilePorcelain(Porcelain):
     """Porcelain command for a single file."""
+
     def handle(self, filename, *args, **kwargs):
+        if self.active_repo is None:
+            raise PorcelainError("This porcelain command requires an active repository.")
+
         try:
             file_config = self.active_repo.get_file_config(filename,
                     default_action=self.env.get('default_action', 'parse'))
@@ -48,10 +52,12 @@ class FilePorcelain(Porcelain):
 class MakeFile(FilePorcelain):
     def handle_file(self, filename, file_config):
         action = file_config.get_action(filename, self.env)
+        self.logger.info("Building file %s (%s)", filename, action.__class__.__name__)
         action.forward(self.active_repo.categories)
 
 
 def BackFile(FilePorcelain):
     def handle_file(self, filename, file_config):
         action = file_config.get_action(filename, self.env)
+        self.logger.info("Backporting file %s (%s)", filename, action.__class__.__name__)
         action.backward(self.active_repo.categories)

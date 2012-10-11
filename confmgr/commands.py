@@ -159,7 +159,6 @@ class Make(WithRepoCommand):
     def run(self):
         p = porcelain.MakeFile(self.env, self.active_repository)
         for filename in self._get_files(self.env.get('files')):
-            self.info("Processing %s", filename)
             p.handle(filename)
 
 
@@ -180,7 +179,6 @@ class Back(WithRepoCommand):
     def run(self):
         p = porcelain.BackFile(self.env, self.active_repository)
         for filename in self._get_files(self.env.get('files')):
-            self.info("Processing %s", filename)
             p.handle(filename)
 
 

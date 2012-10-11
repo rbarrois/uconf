@@ -19,6 +19,7 @@ The CLI parsing is a three-step process:
 
 
 import argparse
+import logging
 import os
 import stat
 
@@ -109,11 +110,21 @@ class CLI(object):
             extra=confhelpers.DictNamespace(args),
         )
 
+    # Logging
+    # -------
+
+    def setup_logging(self):
+        root_logger = logging.getLogger()
+        handler = logging.StreamHandler()
+        root_logger.addHandler(handler)
+        root_logger.setLevel(logging.INFO)
+
     # Running commands
     # ----------------
 
     def run_from_argv(self, argv):
         """Actually run the requested command from the argv."""
+        self.setup_logging()
         # Add command-specific arguments
         args = self.parser.parse_args(argv)
         command_class = args.command
