@@ -56,7 +56,7 @@ class MakeFile(FilePorcelain):
         action.forward(self.active_repo.categories)
 
 
-def BackFile(FilePorcelain):
+class BackFile(FilePorcelain):
     def handle_file(self, filename, file_config):
         action = file_config.get_action(filename, self.env)
         self.logger.info("Backporting file %s (%s)", filename, action.__class__.__name__)
