@@ -8,6 +8,7 @@ from __future__ import absolute_import, unicode_literals
 """Low level actions for confmgr."""
 
 
+import difflib
 import logging
 
 
@@ -61,3 +62,15 @@ class BackFile(FilePorcelain):
         action = file_config.get_action(filename, self.env)
         self.logger.info("Backporting file %s (%s)", filename, action.__class__.__name__)
         action.backward(self.active_repo.categories)
+
+
+class DiffFile(FilePorcelain):
+    def handle_file(self, filename, file_config):
+        action = file_config.get_action(filename, self.env)
+        old, new = action.diff(self.active_repo.categories)
+        if old != new:
+            diff = difflib.unified_diff(old, new,
+                fromfile=action.destination, tofile=action.destination, lineterm='')
+            diff = ('',) + tuple(diff)
+            diff = '\n'.join(diff)
+            self.logger.info("File %s has changed: %s", filename, diff)

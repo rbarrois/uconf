@@ -182,6 +182,26 @@ class Back(WithRepoCommand):
             p.handle(filename)
 
 
+class Diff(WithRepoCommand):
+    """Check whether installed file are compatible with sources."""
+
+    name = 'diff'
+    help = "Compute diff between source and installed version of one or more files."
+
+    required_config_fields = ('target',)
+
+    @classmethod
+    def register_options(cls, parser):
+        parser.add_argument('files', nargs='*', default=Default(tuple()),
+            help="Compute diff of selected files, all valid if empty.")
+        super(Diff, cls).register_options(parser)
+
+    def run(self):
+        p = porcelain.DiffFile(self.env, self.active_repository)
+        for filename in self._get_files(self.env.get('files')):
+            p.handle(filename)
+
+
 class ListFiles(WithRepoCommand):
     name = 'files'
     help = "List all registered files"
@@ -208,4 +228,5 @@ base_commands = [
     ListCategories,
     Make,
     Back,
+    Diff,
 ]

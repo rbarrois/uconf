@@ -53,6 +53,15 @@ class BaseAction(object):
     def _backward(self, categories):
         raise NotImplementedError()
 
+    @catch_fs_exceptions
+    def diff(self, categories):
+        """Compute the differences between planned and actual file content."""
+        self.fs = self.env.get_forward_fs()
+        return self._diff(categories)
+
+    def _diff(self, categories):
+        raise NotImplementedError()
+
     def _ensure_dir_exists(self, path):
         dirname = os.path.dirname(path)
         self.fs.makedir(dirname, recursive=True, allow_recreate=True)
@@ -67,6 +76,11 @@ class CopyAction(BaseAction):
 
     def _backward(self, categories):
         self.fs.copy(self.destination, self.source)
+
+    def _diff(self, categories):
+        source_hash = self.fs.get_hash(self.source)
+        dest_hash = self.fs.get_hash(self.destination)
+        return [source_hash.hexdigest()], [dest_hash.hexdigest()]
 
 
 class SymLinkAction(BaseAction):
@@ -118,6 +132,13 @@ class FileContentAction(BaseAction):
             str: new lines for the source file
         """
         raise NotImplementedError()
+
+    def _diff(self, categories):
+        source_lines = self.fs.readlines(self.source)
+        planned_lines = self.forward_content(source_lines, categories)
+        actual_lines = self.fs.readlines(self.destination)
+
+        return list(planned_lines), list(actual_lines)
 
 
 class FileProcessingAction(FileContentAction):

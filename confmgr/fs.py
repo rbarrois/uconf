@@ -8,6 +8,7 @@ from __future__ import unicode_literals, absolute_import
 import codecs
 from fs import osfs, multifs, mountfs, memoryfs
 from fs.wrapfs import readonlyfs
+import hashlib
 import io
 import os
 import stat
@@ -113,6 +114,17 @@ class FileSystem(object):
                     # Strip final \n
                     line = line[:-1]
                 yield line
+
+    def get_hash(self, filename):
+        """Return a simple hash for the file."""
+        file_hash = hashlib.md5()
+        read_size = 32768
+        with self.open(filename, 'rb') as f:
+            data = f.read(read_size)
+            while data:
+                file_hash.update(data)
+                data = f.read(read_size)
+        return file_hash
 
     def writelines(self, filename, lines, encoding=None):
         """Write a set of lines to a file.

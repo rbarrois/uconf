@@ -114,6 +114,7 @@ class CLI(object):
     # -------
 
     def setup_logging(self):
+        """Set up a minimal logging configuration."""
         root_logger = logging.getLogger()
         handler = logging.StreamHandler()
         root_logger.addHandler(handler)
