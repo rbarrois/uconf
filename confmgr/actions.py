@@ -62,6 +62,15 @@ class BaseAction(object):
     def _diff(self, categories):
         raise NotImplementedError()
 
+    @catch_fs_exceptions
+    def backdiff(self, categories):
+        """Compute the differences between original and backported file content."""
+        self.fs = self.env.get_backward_fs()
+        return self._backdiff(categories)
+
+    def _backdiff(self, categories):
+        raise NotImplementedError()
+
     def _ensure_dir_exists(self, path):
         dirname = os.path.dirname(path)
         self.fs.makedir(dirname, recursive=True, allow_recreate=True)
@@ -81,6 +90,11 @@ class CopyAction(BaseAction):
         source_hash = self.fs.get_hash(self.source)
         dest_hash = self.fs.get_hash(self.destination)
         return [source_hash.hexdigest()], [dest_hash.hexdigest()]
+
+    def _backdiff(self, categories):
+        source, dest = self._diff(categories)
+        # Simply reverse the diff
+        return dest, source
 
 
 class SymLinkAction(BaseAction):
@@ -139,6 +153,14 @@ class FileContentAction(BaseAction):
         actual_lines = self.fs.readlines(self.destination)
 
         return list(planned_lines), list(actual_lines)
+
+    def _backdiff(self, categories):
+        source_lines = list(self.fs.readlines(self.source))
+        destination_lines = list(self.fs.readlines(self.destination))
+        backported_lines = self.backward_content(
+                source_lines, categories, destination_lines)
+
+        return list(backported_lines), source_lines
 
 
 class FileProcessingAction(FileContentAction):

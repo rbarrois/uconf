@@ -74,3 +74,15 @@ class DiffFile(FilePorcelain):
             diff = ('',) + tuple(diff)
             diff = '\n'.join(diff)
             self.logger.info("File %s has changed: %s", filename, diff)
+
+
+class BackDiffFile(FilePorcelain):
+    def handle_file(self, filename, file_config):
+        action = file_config.get_action(filename, self.env)
+        old, new = action.backdiff(self.active_repo.categories)
+        if old != new:
+            diff = difflib.unified_diff(old, new,
+                fromfile=action.source, tofile=action.source, lineterm='')
+            diff = ('',) + tuple(diff)
+            diff = '\n'.join(diff)
+            self.logger.info("File %s has changed: %s", filename, diff)
