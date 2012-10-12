@@ -15,7 +15,7 @@ class FileProcessor(object):
         fs (FileSystem): abstraction toward the filesystem
     """
     def __init__(self, src, fs):
-        self.src = src
+        self.src = list(src)
         self.fs = fs
 
     def forward(self, categories):
@@ -35,7 +35,8 @@ class FileProcessor(object):
         Yields:
             str: updated lines for the original file
         """
-        original_output = list(self.forward(categories))
+        categories = frozenset(categories)
+        original_output = self.forward(categories)
         diff = Differ(original_output, modified)
         generator = Generator(self.src, categories, self.fs)
         backporter = Backporter(diff, generator)
@@ -133,7 +134,7 @@ class Backporter(object):
         # Handle additional lines from the diff
         # Should only be 'insert' lines.
         for action, output in diff:
-            assert action == 'insert'
+            assert action == 'insert', "Unexpected action %s on %r" % (action, output)
             yield self.reverse(output)
 
 
