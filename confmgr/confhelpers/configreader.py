@@ -16,6 +16,38 @@ import os
 import re
 
 
+class ConfigLine(object):
+    """Description of a configuration line.
+
+    Provides (key, value) based comparison, hash.
+
+    Attributes:
+        key (str): the key
+        value (object): the value
+    """
+
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
+
+    def __eq__(self, other):
+        if not isinstance(other, ConfigLine):
+            return NotImplemented
+        return self.key == other.key and self.value == other.value
+
+    def same_key(self, other):
+        return self.key == other.key
+
+    def __hash__(self):
+        return hash((self.key, self.value))
+
+    def __str__(self):
+        return '%s: %r' % (self.key, self.value)
+
+    def __repr__(self):
+        return 'ConfigLine(%r, %r)' % (self.key, self.value)
+
+
 class ConfigReadingError(Exception):
     pass
 
@@ -24,6 +56,17 @@ class BaseSection(object):
     def __init__(self, name):
         self.name = name
         self.entries = dict()
+        self.lines = []
+
+    def _add_line(self, key, value):
+        self.lines.append(ConfigLine(key, value))
+
+    def _add_entry(self, key, value):
+        raise NotImplementedError()
+
+    def __setitem__(self, key, value):
+        self._add_line(key, value)
+        self._add_entry(key, value)
 
     def __iter__(self):
         return iter(self.items())
@@ -35,7 +78,7 @@ class BaseSection(object):
 class MultiValuedSection(BaseSection):
     """A section where each key may appear more than once."""
 
-    def __setitem__(self, key, value):
+    def _add_entry(self, key, value):
         self.entries.setdefault(key, []).append(value)
 
     def items(self):
@@ -45,7 +88,7 @@ class MultiValuedSection(BaseSection):
 
 
 class SingleValuedSection(BaseSection):
-    def __setitem__(self, key, value):
+    def _add_entry(self, key, value):
         self.entries[key] = value
 
     def items(self):
