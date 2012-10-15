@@ -1,45 +1,90 @@
+# coding: utf-8
+# Copyright (c) 2010-2012 Raphaël Barrois
+
+from __future__ import absolute_import, unicode_literals
+
+import re
+
+
+class Lexer(object):
+    """Lex file lines into ConfigLine objects."""
+    re_section_header = re.compile(r'^\[([\w._-]+)\]\s*(#.*)?$')
+    re_blank_line = re.compile(r'^\s*(#.*)?$')
+    re_data_line = re.compile(r'^([^:=]+)[:=](.*)$')
+
+    def parse(self, lines):
+        for rank, line in enumerate(lines):
+            yield self.parse_line(line, rank=rank)
+
+    def parse_line(self, line, rank=0):
+        header_match = self.re_section_header.match(line)
+        if header_match:
+            header = header_match.groups()[0]
+            return ConfigLine(ConfigLine.KIND_HEADER, header=header, text=line)
+
+        data_match = self.re_data_line.match(line)
+        if data_match:
+            key, value = data_match.groups()
+            return ConfigLine(ConfigLine.KIND_DATA, key=key.strip(),
+                    value=value.strip(), text=line)
+
+        blank_match = self.re_blank_line.match(line)
+        if blank_match:
+            return ConfigLine(ConfigLine.KIND_BLANK, text=line)
+
+        raise ValueError("Invalid line %s at %s" % (line, rank))
+
+
 class ConfigLine(object):
     """A simple config line."""
     KIND_BLANK = 0
-    KIND_COMMENT = 1
+    KIND_HEADER = 1
     KIND_DATA = 2
 
-    def __init__(self, kind, key=None, value=None, text=None):
+    def __init__(self, kind, text='', key=None, value=None, header=None):
         self.kind = kind
         self.key = key
         self.value = value
+        self.header = header
         self.text = text
+        if not self.text:
+            self.text = str(self)
 
     def match(self, other):
         if other.kind != self.kind:
             return False
         if self.kind == self.KIND_DATA:
             return self.key == other.key and (other.value is None or other.value == self.value)
+        elif self.kind == self.KIND_HEADER:
+            return self.header == other.header
         else:
-            return self.text == other.text
+            return self.text.strip() == other.text.strip()
 
     def __str__(self):
         if self.kind == self.KIND_DATA:
-            return '%s: %r' % (self.key, self.value)
+            return '%s: %s' % (self.key, self.value)
+        elif self.kind == self.KIND_HEADER:
+            return '[%s]' % self.header
         else:
             return self.text
 
     def __repr__(self):
-        return 'ConfigLine(%r, %r, %r, %r)' % (self.kind, self.key,
-                self.value, self.text)
+        return 'ConfigLine(%r, %r, key=%r, value=%r, header=%r)' % (self.kind,
+                self.text, self.key, self.value, self.header)
 
     def __eq__(self, other):
         if not isinstance(other, ConfigLine):
             return NotImplemented
 
-        return ((self.kind, self.key, self.value, self.text)
-            == (other.kind, other.key, other.value, other.text))
+        return ((self.kind, self.text, self.key, self.value, self.header)
+            == (other.kind, other.text, other.key, other.value, other.header))
 
     def __hash__(self):
-        return hash((self.kind, self.key, self.value, self.text))
+        return hash((self.kind, self.text, self.key, self.value, self.header))
 
 
 class ConfigLineList(object):
+    """A list of ConfigLine."""
     def __init__(self, *lines):
         self.lines = list(lines)
 
@@ -60,11 +105,14 @@ class ConfigLineList(object):
 
         If ``once`` is set to True, remove only the first instance.
         """
+        nb = 0
         for i, line in enumerate(self.lines):
             if line.match(old_line):
                 self.lines[i] = new_line
+                nb += 1
                 if once:
-                    return
+                    return nb
+        return nb
 
     def __contains__(self, line):
         return any(self.find_lines(line))
@@ -81,41 +129,27 @@ class ConfigLineList(object):
         return self.lines == other.lines
 
     def __hash__(self):
-        return hash((self.__class__, self.lines))
+        return hash((self.__class__, tuple(self.lines)))
 
     def __repr__(self):
         return 'ConfigLineList(%r)' % self.lines
 
 
-class SectionBlock(object):
+class SectionBlock(ConfigLineList):
     """A section block.
 
     A section's content may be spread across many such blocks in the file.
     """
-    def __init__(self, name, written=True):
+    def __init__(self, name, *args):
         self.name = name
-        self.is_written = written
-        self.lines = ConfigLineList()
+        super(SectionBlock, self).__init__(*args)
 
-    def insert(self, line):
-        self.lines.append(line)
+    def header_line(self):
+        return ConfigLine(ConfigLine.KIND_HEADER, header=self.name,
+                text='[%s]' % self.name)
 
-    def __contains__(self, line):
-        return line in self.lines
-
-    def update(self, old_line, new_line, once=False):
-        """Replace all lines matching `old_line` with `new_line`.
-
-        If ``once`` is set to True, remove only the first instance.
-        """
-        self.lines.update(old_line, new_line, once=once)
-
-    def remove(self, line):
-        """Remove all instances of a line."""
-        self.lines.remove(line)
-
-    def __iter__(self):
-        return iter(self.lines)
+    def __repr__(self):
+        return 'SectionBlock(%r, %r)' % (self.name, self.lines)
 
 
 class Section(object):
@@ -126,16 +160,24 @@ class Section(object):
     def __init__(self, name):
         self.name = name
         self.blocks = []
-
-    @property
-    def extra_block(self):
-        if self.blocks and not self.blocks[-1].is_written:
-            return self.blocks[-1]
+        self.extra_block = None
 
     def new_block(self, **kwargs):
         block = SectionBlock(self.name, **kwargs)
         self.blocks.append(block)
         return block
+
+    def find_block(self, line):
+        """Find the first block containing a line."""
+        for block in self.blocks:
+            if line in block:
+                return block
+
+    def find_lines(self, line):
+        for block in self.blocks:
+            for block_line in block:
+                if block_line.match(line):
+                    yield block_line
 
     def insert(self, line):
         block = self.find_block(line)
@@ -143,16 +185,21 @@ class Section(object):
             if self.blocks:
                 block = self.blocks[-1]
             else:
-                block = self.new_block(written=False)
-        block.insert_line(line)
+                block = self.extra_block = self.new_block()
+        block.append(line)
+        return block
 
     def update(self, old_line, new_line, once=False):
         """Replace all lines matching `old_line` with `new_line`.
 
         If ``once`` is set to True, remove only the first instance.
         """
+        nb = 0
         for block in self.blocks:
-            block.update(old_line, new_line, once=once)
+            nb += block.update(old_line, new_line, once=once)
+            if nb and once:
+                return nb
+        return nb
 
     def remove(self, line):
         """Delete all lines matching the given line."""
@@ -161,6 +208,9 @@ class Section(object):
 
     def __iter__(self):
         return iter(self.blocks)
+
+    def __repr__(self):
+        return '<Section: %s>' % self.name
 
 
 class ConfigFile(object):
@@ -191,6 +241,17 @@ class ConfigFile(object):
             self.sections[name] = section
             return section
 
+    # Accessing values
+    # ================
+
+    def get(self, section, line):
+        """Retrieve all lines compatible with a given line."""
+        section = self.get_section(section)
+        return section.find_lines(line)
+
+    # Filling from lines
+    # ==================
+
     def enter_block(self, name):
         """Mark 'entering a block'."""
         section = self.get_section(name)
@@ -204,27 +265,49 @@ class ConfigFile(object):
         else:
             self.header.append(line)
 
+    def read_line(self, line):
+        """Read one line."""
+        if line.kind == ConfigLine.KIND_HEADER:
+            self.enter_block(line.header)
+        else:
+            self.insert_line(line)
+
+    # Updating config content
+    # =======================
+
     def insert(self, section, line):
-        self.get_section(section).insert(line)
+        """Insert a new line within a section.
+
+        Returns the SectionBlock containing that new line.
+        """
+        return self.get_section(section).insert(line)
 
     def update(self, section, old_line, new_line, once=False):
         """Replace all lines matching `old_line` with `new_line`.
 
         If ``once`` is set to True, remove only the first instance.
+
+        Returns:
+            int: the number of updates performed
         """
-        self.get_section(section).update(new_line, old_line, once=once)
+        return self.get_section(section).update(new_line, old_line, once=once)
 
     def remove(self, section, line):
         self.get_section(section, create=False).unset(line)
+
+    # Regenerating file
+    # =================
 
     def __iter__(self):
         for line in self.header:
             yield line
         for block in self.blocks:
+            yield block.header_line()
             for line in block:
                 yield line
 
         for section in self.sections.values():
             if section.extra_block:
+                yield section.extra_block.header_line()
                 for line in section.extra_block:
                     yield line
