@@ -10,7 +10,7 @@ class LineTestCase(unittest.TestCase):
     def test_repr(self):
         self.assertEqual("Line('foo', 'bar')",
             repr(converter.Line('foo', 'bar')))
-    
+
     def test_equality(self):
         self.assertEqual(
             converter.Line('foo', 'bar'),
