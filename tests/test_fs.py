@@ -36,8 +36,7 @@ def with_tempfile(fun):
 class FileSystemTestCase(unittest.TestCase):
     """Tests for a 'normal' file system."""
     def setUp(self):
-        self.base_fs = osfs.OSFS('/')
-        self.fs = fs.FileSystem(self.base_fs)
+        self.fs = fs.FileSystem('/')
 
     @with_tempfile
     def test_read_line(self, name):
