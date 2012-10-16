@@ -62,8 +62,8 @@ class CLI(object):
 
     def register_options(self, parser):
         """Register global options"""
-        parser.add_argument('--root', '-r', help="Set confmgr repository root")
-        parser.add_argument('--config-dir', '-c', help="Use confmgr config dir CONFIG_DIR")
+        parser.add_argument('--root', '-r', help="Set uconf repository root")
+        parser.add_argument('--config-dir', '-c', help="Use uconf config dir CONFIG_DIR")
         parser.add_argument('--prefs', '-p', nargs='*', default=constants.CONFIG_FILES,
             help="Read user preferences from PREF files", metavar='PREF')
         parser.add_argument('--version', '-V', help="Display version", action='version',

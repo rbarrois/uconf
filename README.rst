@@ -1,8 +1,8 @@
-Confmgr
+UConf
 =======
 
 
-Confmgr is a small tool aiming to provide simple handling of configuration files for an heterogeneous
+UConf is a small tool aiming to provide simple handling of configuration files for an heterogeneous
 computer set.
 
 Its key concepts are:
@@ -16,14 +16,14 @@ Its key concepts are:
 Configuring
 -----------
 
-You can get started with ``confmgr init <source_dir> <target_dir>``.
+You can get started with ``uconf init <source_dir> <target_dir>``.
 This will generate the following layout::
 
     ./<source_dir>
         config
         src/
 
-The ``config`` file is Confmgr's main entry point. Its content should look like::
+The ``config`` file is UConf's main entry point. Its content should look like::
 
     [global]
     ; Install files into the <target_dir> folder.

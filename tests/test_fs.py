@@ -11,7 +11,7 @@ import unittest
 
 from fs import osfs
 
-from confmgr import fs
+from uconf import fs
 
 
 def with_tempfile(fun):

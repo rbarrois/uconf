@@ -4,7 +4,7 @@
 import difflib
 import re
 
-from confmgr import rule_parser
+from uconf import rule_parser
 
 
 class FileProcessor(object):

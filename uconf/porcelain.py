@@ -5,7 +5,7 @@
 from __future__ import absolute_import, unicode_literals
 
 
-"""Low level actions for confmgr."""
+"""Low level actions for uconf."""
 
 
 import difflib

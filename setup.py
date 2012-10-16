@@ -26,7 +26,7 @@ def read_requirements(filename):
         return [l for l in lines if l and not l.startswith('#')]
 
 
-PACKAGE = 'confmgr'
+PACKAGE = 'uconf'
 
 
 setup(
@@ -34,12 +34,12 @@ setup(
     version=get_version(PACKAGE),
     author="Raphaël Barrois",
     author_email="raphael.barrois@polytechnique.org",
-    description='ConfMgr, a smart tool for managing config files',
-    license="MIT",
-    keywords=['configuration', 'management', 'confmgr', 'config'],
-    url="http://confmgr.xelnor.net/",
+    description='UConf, a smart tool for managing config files',
+    license="GPLv3+",
+    keywords=['configuration', 'management', 'uconf', 'confmgr', 'config'],
+    url="http://uconf.xelnor.net/",
     packages=find_packages(),
-    scripts=['bin/confmgr', 'bin/install-bin', 'bin/confmgr-bin'],
+    scripts=['bin/uconf'],
     setup_requires=[
         'distribute',
     ],

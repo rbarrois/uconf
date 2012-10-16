@@ -1,14 +1,14 @@
-THIS: This is the doc for 'confmgr', a tool to manage one's config in a centralized way
+THIS: This is the doc for 'uconf', a tool to manage one's config in a centralized way
 
-PURPOSE: confmgr is a tool to manage config, generating that required for the local machine, from generic files
+PURPOSE: uconf is a tool to manage config, generating that required for the local machine, from generic files
 
-FILES: A confmgr 'repo' is a simple folder containing :
+FILES: A uconf 'repo' is a simple folder containing :
     - A 'config' file, which describes how the repo is to be handled (root install path, ...)
     - A 'src' folder, which holds the versioned, raw version of files
     - A 'dst' folder, which holds the local, built version of files
     
-    A '~/.confmgr' file exists, which basically holds a few options and the path to the local repo
-    A '/etc/confmgr' file does the same job (global options) and can specify the path to the default repo of each user (for instance '/root/config' for root user, '/etc/news/config' for news, '~/conf' for any user, ...)
+    A '~/.uconf' file exists, which basically holds a few options and the path to the local repo
+    A '/etc/uconf' file does the same job (global options) and can specify the path to the default repo of each user (for instance '/root/config' for root user, '/etc/news/config' for news, '~/conf' for any user, ...)
 
 FORMATS: There are basically 5 kinds of files :
     - Normal config files. Those are the purpose of the tool. They consist of normal lines, with the following special ones :
@@ -34,7 +34,7 @@ FORMATS: There are basically 5 kinds of files :
     - The 'config' file : It holds important data ; it is build as an ini file. Defaults are between brackets. Its sections are :
         - [core] : all basic info :
             - 'marker' : relative path to a file or dir which is changed any time the list of files in 'src' has changed ; optional if 'repo_type' is not 'other'
-            - 'repo_type' : 'git', 'svn', or 'other' : if 'other' is used, you have to set 'marker' ; if not specified, confmgr will try to see whether it is git or svn by looking for .git or .svn folders
+            - 'repo_type' : 'git', 'svn', or 'other' : if 'other' is used, you have to set 'marker' ; if not specified, uconf will try to see whether it is git or svn by looking for .git or .svn folders
             - 'repo_root' : root of the local repo ; will be assumed to be the folder holding config if not specified
         - [paths] : all info related to paths
             - 'source' (src) : path to src folder
@@ -46,7 +46,7 @@ FORMATS: There are basically 5 kinds of files :
             - 'default_group' ($GROUP) : idem
             - 'default_mode' ($DST) : default mode for installed files ; best to set this to '$DST' (keep value of file in 'dst')
             - 'default_umask' (empty) : umask to use ; by default, keeps current umask
-    - The '__paths' files : those files, present in all folders in 'src' (and potentially in each subfolder : for a file in 'files', the '__paths' file of each of its parents folder are checked in order until one containing it is found ; if none exists, confmgr outputs a warning)
+    - The '__paths' files : those files, present in all folders in 'src' (and potentially in each subfolder : for a file in 'files', the '__paths' file of each of its parents folder are checked in order until one containing it is found ; if none exists, uconf outputs a warning)
         For each file handled, there is :
         - a row, starting at the first column, with the name of the file, followed by a variable number of spaces / tabs, followed by its relative install path (either a full name or a path ending with a /) ; spaces in the names of those files must be escaped with a backslash, thus those rows match : 
             /^((\\\\)*(\\ +)[^ \t])+[ \t]+([^ \t].*)$/
@@ -63,7 +63,7 @@ FORMATS: There are basically 5 kinds of files :
         Rows for (un)build: and install: can be continues other the next one if ending with \ ; all spaces in the beginning of the new one will be stripped. The commands are passed to the shell "as is" : no variable substitution is performed.
 
 COMMANDS: Available commands are :
-    - init : initiate a new folder ; can take a path to a repo as argument, prefixed with "git" or "svn" if protocol can't be determined from url (the presence of git or svn in the path will be used unless disabled in config file) ; confmgr init git will run a git init
+    - init : initiate a new folder ; can take a path to a repo as argument, prefixed with "git" or "svn" if protocol can't be determined from url (the presence of git or svn in the path will be used unless disabled in config file) ; uconf init git will run a git init
     - up | update : will update the repo if it knows how, then update files.local if needed, then build all files
     - install : will check all files, and copy those which aren't already present, and output a warning for all non processed file (format of output can be set through config).
     - force-install | install --force : will install all files, even if not the same as target ; might keep a backup if asked in config or with --backup, unless --no-backup is used

@@ -16,11 +16,11 @@ from . import porcelain
 from .confhelpers import Default
 
 
-class ConfmgrError(Exception):
+class UConfError(Exception):
     pass
 
 
-class ConfigError(ConfmgrError):
+class ConfigError(UConfError):
     pass
 
 
@@ -111,15 +111,15 @@ class VersionCommand(BaseCommand):
 
 class Init(BaseCommand):
     name = 'init'
-    help = "Setup a new confmgr repository"
+    help = "Setup a new uconf repository"
 
     required_config_fields = ('root',)
 
     def run(self):
         self.env.root = self.env.get('root')
         fs = self.env.get_repo_fs()
-        fs.makedir(env.confmgr_dir, recursive=True, allow_recreate=True)
-        fs.writelines(os.path.join(env.confmgr_dir, 'config'), [])
+        fs.makedir(env.uconf_dir, recursive=True, allow_recreate=True)
+        fs.writelines(os.path.join(env.uconf_dir, 'config'), [])
 
 
 class WithRepoCommand(BaseCommand):

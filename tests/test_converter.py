@@ -3,7 +3,7 @@
 
 import unittest
 
-from confmgr import converter
+from uconf import converter
 
 
 class LineTestCase(unittest.TestCase):

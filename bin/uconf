@@ -1,0 +1,10 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# PURPOSE
+# This script is intended as a CLI front-end to the uconf python module
+
+from uconf import cli
+import sys
+
+cli.main(sys.argv)

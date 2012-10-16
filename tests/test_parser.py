@@ -4,8 +4,8 @@
 import re
 import unittest
 
-from confmgr import action_parser
-from confmgr import rule_parser
+from uconf import action_parser
+from uconf import rule_parser
 
 class RuleLexerTestCase(unittest.TestCase):
 

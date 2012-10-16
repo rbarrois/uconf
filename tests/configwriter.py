@@ -3,7 +3,7 @@
 
 import unittest
 
-from confmgr.confhelpers import configwriter
+from uconf.confhelpers import configwriter
 
 
 class LineTestCase(unittest.TestCase):

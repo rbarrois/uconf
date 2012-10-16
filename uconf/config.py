@@ -186,7 +186,7 @@ class Env(object):
         self.config = config
 
     @property
-    def confmgr_dir(self):
+    def uconf_dir(self):
         return os.path.join(self.root, constants.REPO_SUBFOLDER)
 
     def isset(self, key):
@@ -211,13 +211,13 @@ class Env(object):
         return fs.FileSystem(self.root, dry_run=self.get('dry_run', False))
 
     def get_repo_fs(self):
-        return fs.FileSystem(self.confmgr_dir, dry_run=self.get('dry_run', False))
+        return fs.FileSystem(self.uconf_dir, dry_run=self.get('dry_run', False))
 
     @classmethod
     def _walk_root(cls, base):
         """Walk to the top of a directory tree until a repository root is found.
 
-        Stops at the first folder containing a '.confmgr' subdirectory.
+        Stops at the first folder containing a '.uconf' subdirectory.
         """
         current = helpers.get_absolute_path(base)
         prev = None
