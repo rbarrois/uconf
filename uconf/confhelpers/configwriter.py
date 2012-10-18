@@ -229,7 +229,7 @@ class ConfigFile(object):
         self.header = ConfigLineList()
         self.current_block = None
 
-    def get_section(self, name, create=True):
+    def _get_section(self, name, create=True):
         """Retrieve a section by name. Create it on first access."""
         try:
             return self.sections[name]
@@ -244,9 +244,9 @@ class ConfigFile(object):
     # Accessing values
     # ================
 
-    def get(self, section, line):
+    def get_line(self, section, line):
         """Retrieve all lines compatible with a given line."""
-        section = self.get_section(section)
+        section = self._get_section(section, create=False)
         return section.find_lines(line)
 
     # Filling from lines
@@ -254,18 +254,19 @@ class ConfigFile(object):
 
     def enter_block(self, name):
         """Mark 'entering a block'."""
-        section = self.get_section(name)
-        block = self.current_block = sectino.new_block()
+        section = self._get_section(name)
+        block = self.current_block = section.new_block()
         self.blocks.append(block)
+        return block
 
     def insert_line(self, line):
         """Insert a new line"""
-        if self.current_block:
-            self.current_block.insert_line(line)
+        if self.current_block is not None:
+            self.current_block.append(line)
         else:
             self.header.append(line)
 
-    def read_line(self, line):
+    def handle_line(self, line):
         """Read one line."""
         if line.kind == ConfigLine.KIND_HEADER:
             self.enter_block(line.header)
@@ -275,14 +276,14 @@ class ConfigFile(object):
     # Updating config content
     # =======================
 
-    def insert(self, section, line):
+    def add_line(self, section, line):
         """Insert a new line within a section.
 
         Returns the SectionBlock containing that new line.
         """
-        return self.get_section(section).insert(line)
+        return self._get_section(section).insert(line)
 
-    def update(self, section, old_line, new_line, once=False):
+    def update_line(self, section, old_line, new_line, once=False):
         """Replace all lines matching `old_line` with `new_line`.
 
         If ``once`` is set to True, remove only the first instance.
@@ -290,10 +291,39 @@ class ConfigFile(object):
         Returns:
             int: the number of updates performed
         """
-        return self.get_section(section).update(new_line, old_line, once=once)
+        return self._get_section(section).update(new_line, old_line, once=once)
 
-    def remove(self, section, line):
-        self.get_section(section, create=False).unset(line)
+    def remove_line(self, section, line):
+        self._get_section(section, create=False).unset(line)
+
+    # High-level API
+    # ==============
+
+    def _make_line(self, key, value=None):
+        return ConfigLine(ConfigLine.KIND_DATA, key=key, value=value)
+
+    def get(self, section, key):
+        line = self._make_line(key)
+        return self.get_line(section, line)
+
+    def add(self, section, key, value):
+        line = self._make_line(key, value)
+        return self.add_line(section, line)
+
+    def add_or_update(self, section, key, value):
+        """Update the key or, if no previous value existed, add it."""
+        nb_updates = self.update(section, key, value)
+        if nb_updates == 0:
+            self.add(section, key, value)
+
+    def update(self, section, key, new_value, old_value=None, once=False):
+        old_line = self._make_line(key, old_value)
+        new_line = self._make_line(key, new_value)
+        return self.update_line(section, old_line, new_line, once=once)
+
+    def remove(self, section, key, value=None):
+        line = self._make_line(key, value)
+        return self.remove_line(section, line)
 
     # Regenerating file
     # =================
