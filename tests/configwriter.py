@@ -462,6 +462,28 @@ class SectionTestCase(unittest.TestCase):
 
         self.assertEqual(block2, s.find_block(self.l2))
 
+    def test_find_lines(self):
+        s = configwriter.Section('foo')
+        block1 = s.new_block()
+        block1.append(self.l1)
+
+        block2 = s.new_block()
+        block2.append(self.l1)
+        block2.append(self.l2)
+        block2.append(self.l2)
+
+        block3 = s.new_block()
+        block3.append(self.l2)
+
+        lines = list(s.find_lines(self.l1))
+        self.assertEqual([self.l1, self.l1], lines)
+
+        lines = list(s.find_lines(self.l2))
+        self.assertEqual([self.l2, self.l2, self.l2], lines)
+
+        lines = list(s.find_lines(self.l3))
+        self.assertEqual([], lines)
+
     def test_insert(self):
         s = configwriter.Section('foo')
         block = s.new_block()
@@ -606,3 +628,155 @@ class SectionTestCase(unittest.TestCase):
 
         self.assertIsNone(s.extra_block)
         self.assertEqual([], s.blocks)
+
+
+class ConfigFileTestCase(unittest.TestCase):
+    def setUp(self):
+        self.l1 = configwriter.ConfigLine(configwriter.ConfigLine.KIND_DATA,
+                key='x', value='42')
+        self.l2 = configwriter.ConfigLine(configwriter.ConfigLine.KIND_HEADER,
+                header='bar')
+        self.l3 = configwriter.ConfigLine(configwriter.ConfigLine.KIND_DATA,
+                key='x', value='13')
+        self.l4 = configwriter.ConfigLine(configwriter.ConfigLine.KIND_DATA,
+                key='x', value=None)
+
+    def test_enter_block(self):
+        c = configwriter.ConfigFile()
+        self.assertEqual([], c.blocks)
+        self.assertIsNone(c.current_block)
+
+        block = c.enter_block('foo')
+        self.assertEqual([block], c.blocks)
+        self.assertEqual(block, c.current_block)
+        self.assertIn('foo', c.sections)
+        self.assertEqual([block], c.sections['foo'].blocks)
+
+    def test_enter_block_twice(self):
+        c = configwriter.ConfigFile()
+        self.assertEqual([], c.blocks)
+        self.assertIsNone(c.current_block)
+
+        block1 = c.enter_block('foo')
+        self.assertEqual([block1], c.blocks)
+        self.assertEqual(block1, c.current_block)
+        self.assertIn('foo', c.sections)
+        self.assertEqual([block1], c.sections['foo'].blocks)
+
+        block2 = c.enter_block('foo')
+        self.assertEqual([block1, block2], c.blocks)
+        self.assertEqual(block2, c.current_block)
+        self.assertEqual([block1, block2], c.sections['foo'].blocks)
+
+    def test_enter_block_alternate(self):
+        c = configwriter.ConfigFile()
+        self.assertEqual([], c.blocks)
+        self.assertIsNone(c.current_block)
+
+        block1 = c.enter_block('foo')
+        self.assertEqual([block1], c.blocks)
+        self.assertEqual(block1, c.current_block)
+        self.assertIn('foo', c.sections)
+        self.assertEqual([block1], c.sections['foo'].blocks)
+
+        block2 = c.enter_block('bar')
+        self.assertEqual([block1, block2], c.blocks)
+        self.assertEqual(block2, c.current_block)
+        self.assertEqual([block1], c.sections['foo'].blocks)
+        self.assertIn('bar', c.sections)
+        self.assertEqual([block2], c.sections['bar'].blocks)
+
+        block3 = c.enter_block('foo')
+        self.assertEqual([block1, block2, block3], c.blocks)
+        self.assertEqual(block3, c.current_block)
+        self.assertEqual([block1, block3], c.sections['foo'].blocks)
+        self.assertEqual([block2], c.sections['bar'].blocks)
+
+    def test_insert_line_header(self):
+        c = configwriter.ConfigFile()
+        c.insert_line(self.l1)
+
+        self.assertEqual([], c.blocks)
+        self.assertIsNone(c.current_block)
+        self.assertEqual([self.l1], list(c.header))
+
+    def test_insert_line(self):
+        c = configwriter.ConfigFile()
+        block = c.enter_block('foo')
+
+        c.insert_line(self.l1)
+
+        self.assertEqual([self.l1], list(block))
+        self.assertEqual([self.l1], list(c.current_block))
+        self.assertEqual([], list(c.header))
+
+    def test_handle_line_data_header(self):
+        c = configwriter.ConfigFile()
+        c.handle_line(self.l1)
+
+        self.assertEqual([], c.blocks)
+        self.assertIsNone(c.current_block)
+        self.assertEqual([self.l1], list(c.header))
+
+    def test_handle_line_data_block(self):
+        c = configwriter.ConfigFile()
+        block = c.enter_block('foo')
+
+        c.handle_line(self.l1)
+
+        self.assertEqual([self.l1], list(block))
+        self.assertEqual([self.l1], list(c.current_block))
+        self.assertEqual([], list(c.header))
+
+    def test_handle_line_section_header(self):
+        c = configwriter.ConfigFile()
+        block = c.enter_block('foo')
+
+        c.handle_line(self.l2)
+
+        self.assertEqual(2, len(c.blocks))
+        self.assertEqual('bar', c.current_block.name)
+        self.assertIn('bar', c.sections)
+
+    def test_get_line_undefined(self):
+        c = configwriter.ConfigFile()
+        c.enter_block('foo')
+        lines = list(c.get_line('foo', self.l1))
+        self.assertEqual([], lines)
+
+    def test_get_line_invalid_section(self):
+        c = configwriter.ConfigFile()
+        self.assertRaises(KeyError, c.get_line, 'foo', self.l1)
+
+    def test_get_line(self):
+        c = configwriter.ConfigFile()
+        c.enter_block('foo')
+        c.insert_line(self.l1)
+        c.enter_block('bar')
+        c.insert_line(self.l3)
+
+        lines = list(c.get_line('foo', self.l1))
+        self.assertEqual([self.l1], lines)
+
+        lines = list(c.get_line('foo', self.l4))
+        self.assertEqual([self.l1], lines)
+
+    def test_add_line_empty(self):
+        c = configwriter.ConfigFile()
+        block = c.add_line('foo', self.l1)
+        self.assertEqual('foo', block.name)
+        self.assertIn('foo', c.sections)
+        self.assertEqual(block, c.sections['foo'].extra_block)
+        self.assertEqual([self.l1], list(block))
+
+    def test_add_line_existing_block(self):
+        c = configwriter.ConfigFile()
+        c.enter_block('foo')
+
+        block = c.add_line('foo', self.l1)
+        self.assertEqual('foo', block.name)
+        self.assertEqual(block, c.current_block)
+        self.assertEqual([block], c.blocks)
+        self.assertIn('foo', c.sections)
+        self.assertEqual(block, c.sections['foo'].blocks[0])
+        self.assertEqual([self.l1], list(block))
