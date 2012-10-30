@@ -3,3 +3,6 @@ fs
 
 # Parsing
 tdparser
+
+# Configuration
+confutils>=0.3.0
