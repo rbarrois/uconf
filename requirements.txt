@@ -5,4 +5,4 @@ fs
 tdparser
 
 # Configuration
-confutils>=0.3.0
+confutils>=0.3.2
