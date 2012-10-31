@@ -14,9 +14,10 @@ import os
 import socket
 import stat
 
+import confutils
+
 from . import action_parser
 from . import actions
-from . import confhelpers
 from . import constants
 from . import fs
 from . import helpers
@@ -86,6 +87,14 @@ class GlobbingDict(dict):
         return "GlobbingDict(%s)" % super(GlobbingDict, self).__repr__()
 
 
+def _flatten(fields, separator=None):
+    """Flatten a list of space-separated names."""
+    flattened = set()
+    for field in fields:
+        flattened |= set(field.split(separator))
+    return flattened
+
+
 class RepositoryView(object):
     """A repository, as seen for a given set of initial categories.
 
@@ -102,7 +111,7 @@ class RepositoryView(object):
         self.categories = frozenset(initial)
         for category_rule, extra_categories in self.base.category_rules:
             if category_rule.test(self.categories):
-                self.categories |= frozenset(extra_categories)
+                self.categories |= extra_categories
 
     def iter_files(self):
         """Retrieve all active files for this view
@@ -145,12 +154,12 @@ class Repository(object):
     def _merge_category_rules(self, rules):
         for rule_text, extra_categories in rules.items():
             rule = self.rule_lexer.get_rule(rule_text)
-            self.category_rules.append((rule, extra_categories.split()))
+            self.category_rules.append((rule, _flatten(extra_categories)))
 
     def _merge_file_rules(self, rules):
         for rule_text, filenames in rules.items():
             rule = self.rule_lexer.get_rule(rule_text)
-            for filename in filenames.split(' '):
+            for filename in _flatten(filenames, ' '):
                 self.file_rules.append((rule, filename))
 
     def _merge_file_actions(self, actions):
@@ -166,9 +175,12 @@ class Repository(object):
             self.file_configs[filename] = FileConfig(action, **options)
 
     def fill_from_config(self, config):
-        self._merge_category_rules(config['categories'])
-        self._merge_file_rules(config['files'])
-        self._merge_file_actions(config['actions'])
+        self._merge_category_rules(
+                config.section_view('categories', multi_value=True))
+        self._merge_file_rules(
+                config.section_view('files', multi_value=True))
+        self._merge_file_actions(
+                config.section_view('actions', multi_value=False))
 
 
 class Env(object):
@@ -191,14 +203,17 @@ class Env(object):
 
     def isset(self, key):
         """Check whether a non-default has been set for a given key."""
-        value = self.get(key, default=confhelpers.NoDefault)
-        return value != confhelpers.NoDefault
+        value = self.get(key, default=confutils.NoDefault)
+        return value != confutils.NoDefault
 
     def get(self, key, default=None):
         return self.config.get(key, default)
 
     def getlist(self, key, default=(), separator=' '):
-        return self.config.get_tuple(key, default=default, separator=separator)
+        value = self.get(key, default=default)
+        if isinstance(value, basestring):
+            value = value.split(separator)
+        return list(value)
 
     def get_active_repository(self, initial_cats):
         # TODO(rbarrois): consider memoizing
@@ -235,8 +250,7 @@ class Env(object):
         if repo_root:
             repo_root = cls._walk_root(repo_root)
 
-        config = confhelpers.ConfigReader(
-            multi_valued_sections=('files', 'categories', 'actions'))
+        config = confutils.ConfigFile()
 
         for config_file in config_files:
             config_file = helpers.get_absolute_path(config_file)
@@ -251,14 +265,14 @@ class Env(object):
 
     @classmethod
     def _merge_config(cls, config, sections=(), extra=None):
-        merged = confhelpers.MergedConfig()
+        merged = confutils.MergedConfig()
         if extra is not None:
             merged.add_options(extra)
 
         for section in sections:
-            merged.add_options(config[section])
+            merged.add_options(config.section_view(section))
 
-        merged.add_options(config['core'])
+        merged.add_options(config.section_view('core'))
 
         return merged
 

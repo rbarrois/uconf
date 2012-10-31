@@ -8,12 +8,13 @@ import os.path
 import socket
 import sys
 
+from confutils import Default
+
 from . import __version__
 from . import config
 from . import fs
 from . import helpers
 from . import porcelain
-from .confhelpers import Default
 
 
 class UConfError(Exception):
@@ -227,7 +228,7 @@ class ListFiles(WithRepoCommand):
     help = "List all registered files"
 
     def run(self):
-        for filename, _action in sorted(self.active_repository.iter_files()):
+        for filename in sorted(self.active_repository.iter_files()):
             self.info(filename)
 
 

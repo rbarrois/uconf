@@ -23,15 +23,16 @@ import logging
 import os
 import stat
 
+import confutils
+
 from . import commands
 from . import config
-from . import confhelpers
 from . import constants
 from . import helpers
 from . import __version__
 
 
-Default = confhelpers.Default
+Default = confutils.Default
 
 
 class CLI(object):
@@ -107,7 +108,7 @@ class CLI(object):
         return config.Env.from_files(
             repo_root=args.root or os.getcwd(),
             sections=(command_class.get_name(),),
-            extra=confhelpers.DictNamespace(args),
+            extra=confutils.DictNamespace(args),
         )
 
     # Logging
