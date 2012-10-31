@@ -30,3 +30,8 @@ def rebase_fs(base, filesystem):
     mounted_fs = mountfs.MountFS()
     mounted_fs.mount(base, filesystem)
     return mounted_fs
+
+
+def get_relative_path(root, path, base=''):
+    """Converts the given 'path' to a path relative to the 'root'."""
+    return os.path.relpath(get_absolute_path(path, base=base), root)
