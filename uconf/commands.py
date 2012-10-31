@@ -223,6 +223,37 @@ class BackDiff(WithRepoCommand):
             p.handle(filename)
 
 
+class ImportFile(WithRepoCommand):
+    name = 'import'
+    help = "Import a new file into the repository"
+
+    @classmethod
+    def register_options(cls, parser):
+        parser.add_argument('files', nargs='+', help="Add the selected files")
+        parser.add_argument('--categories', required=True,
+            help="Import into the selected category")
+        parser.add_argument('--action', nargs='?',
+            help="Build with the selected action")
+        parser.add_argument('--action-params', nargs='*', default=Default(()),
+            help="Extra parameters for the selected action")
+        destination_group = parser.add_mutually_exclusive_group()
+        destination_group.add_argument('--folder',
+            help="Store the files in the given folder")
+        super(ImportFile, cls).register_options(parser)
+
+    def run(self):
+        action_params = list(self.env.get('action_params', ()))
+
+        p = porcelain.ImportFiles(self.env, self.active_repository)
+        p.handle(
+            files=self.env.get('files'),
+            categories=self.env.get('categories'),
+            action=self.env.get('action'),
+            action_params=self.env.get('action_params', ()),
+            folder=self.env.get('folder'),
+        )
+
+
 class ListFiles(WithRepoCommand):
     name = 'files'
     help = "List all registered files"
@@ -247,6 +278,7 @@ base_commands = [
     Init,
     ListFiles,
     ListCategories,
+    ImportFile,
     Make,
     Back,
     Diff,

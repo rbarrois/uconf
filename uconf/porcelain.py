@@ -10,7 +10,9 @@ from __future__ import absolute_import, unicode_literals
 
 import difflib
 import logging
+import os.path
 
+from . import helpers
 
 class PorcelainError(Exception):
     def __init__(self, user_message):
@@ -32,6 +34,77 @@ class Porcelain(object):
             PorcelainError: if anything went wrong.
         """
         raise NotImplementedError()
+
+
+class ImportFiles(Porcelain):
+    def _make_action_text(self, action=None, action_params=()):
+        if action:
+            text = action
+        elif action_params:  # Default action, but overridden params
+            text = 'parse'
+        else:
+            return ''
+
+        if action_params:
+            text = '%s %s' % (text,
+                ' '.join('%s=%s' % param for param in action_params))
+        return text
+
+    def _prepare_files(self, targets, storage_folder=None):
+        """Converts a set of files to a list of (storage, target) pairs.
+
+        The returned (storage, target) pairs are relative paths:
+            - the 'storage' path is relative to the repository root
+            - the 'target' path is relative to the install root
+        """
+        target_root = self.env.get('target', '') or ''
+
+        targets = [
+            helpers.get_relative_path(target_root, target, base=target_root)
+            for target in targets]
+
+        if storage_folder:
+            storage_folder = helpers.get_relative_path(
+                self.env.root, storage_folder, base=self.env.root)
+
+            return [
+                (os.path.join(storage_folder, os.path.basename(t)), t)
+                for t in targets]
+
+        else:
+            return [(t, t) for t in targets]
+
+    def handle(self, files, categories, action=None, action_params=(),
+            folder=None, *args, **kwargs):
+        repo_config = self.env.repository.config
+
+        # Cleanup paths
+        paths = self._prepare_files(files, storage_folder=folder)
+        files_text = ' '.join(storage for storage, _install in paths)
+
+        # Add to the 'files' section
+        if files_text in list(repo_config.get('files', categories)):
+            self.logger.warning("Files '%s' already registered for categories %r",
+                files_text, categories)
+        else:
+            self.logger.info("Registering files '%s' for categories %r",
+                files_text, categories)
+            repo_config.add('files', categories, files_text)
+
+        # Handle dedicated action/options for files
+        for storage, install in paths:
+            file_params = list(action_params)
+            if storage != install:
+                file_params.append(('dest', install))
+
+            action_text = self._make_action_text(action, file_params)
+            if action_text:
+                self.logger.info("Adding rule %r for files '%s'",
+                    action_text, storage)
+                repo_config.add_or_update('actions', storage, action_text)
+
+        # Write out the configuration
+        self.env.repository.write_config(self.env.get_repo_fs())
 
 
 class FilePorcelain(Porcelain):
