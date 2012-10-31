@@ -13,6 +13,7 @@ import fnmatch
 import os
 import socket
 import stat
+import time
 
 import confutils
 
@@ -138,12 +139,25 @@ class Repository(object):
         rule_lexer (rule_parser.RuleLexer): lexer to use for rule parsing
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, root=None, *args, **kwargs):
+        self.root = root
+        self.config = confutils.ConfigFile()
+
         self.category_rules = []
         self.file_rules = []
         self.file_configs = GlobbingDict()
         self.rule_lexer = rule_parser.RuleLexer()
         self.action_lexer = action_parser.ActionLexer()
+
+        self._read_config()
+
+    @property
+    def uconf_dir(self):
+        return os.path.join(self.root, constants.REPO_SUBFOLDER)
+
+    @property
+    def config_path(self):
+        return os.path.join(self.uconf_dir, 'config')
 
     def extract(self, initial):
         """Extract a 'view' on this repository for given initial categories."""
@@ -151,18 +165,41 @@ class Repository(object):
         view.set_initial_categories(initial)
         return view
 
-    def _merge_category_rules(self, rules):
+    def write_config(self, fs):
+        """Update the configuration."""
+        temp_name = '.config-%s.new' % time.strftime('%Y%m%d%H%M%S')
+        temp_path = os.path.join(self.uconf_dir, temp_name)
+
+        with fs.open(temp_path, 'wt') as f:
+            self.config.write(f)
+
+        fs.rename(temp_path, self.config_path)
+
+    def _read_config(self):
+        if not self.root:
+            return
+
+        self.config.parse_file(self.config_path, skip_unreadable=False)
+
+        self._read_category_rules(
+                self.config.section_view('categories', multi_value=True))
+        self._read_file_rules(
+                self.config.section_view('files', multi_value=True))
+        self._read_file_actions(
+                self.config.section_view('actions', multi_value=False))
+
+    def _read_category_rules(self, rules):
         for rule_text, extra_categories in rules.items():
             rule = self.rule_lexer.get_rule(rule_text)
             self.category_rules.append((rule, _flatten(extra_categories)))
 
-    def _merge_file_rules(self, rules):
+    def _read_file_rules(self, rules):
         for rule_text, filenames in rules.items():
             rule = self.rule_lexer.get_rule(rule_text)
             for filename in _flatten(filenames, ' '):
                 self.file_rules.append((rule, filename))
 
-    def _merge_file_actions(self, actions):
+    def _read_file_actions(self, actions):
         for filename, action_text in actions.items():
             action_parts = action_text.strip().split(' ', 1)
             action = action_parts.pop(0)
@@ -173,14 +210,6 @@ class Repository(object):
                 options = {}
 
             self.file_configs[filename] = FileConfig(action, **options)
-
-    def fill_from_config(self, config):
-        self._merge_category_rules(
-                config.section_view('categories', multi_value=True))
-        self._merge_file_rules(
-                config.section_view('files', multi_value=True))
-        self._merge_file_actions(
-                config.section_view('actions', multi_value=False))
 
 
 class Env(object):
@@ -291,8 +320,7 @@ class Env(object):
                 config_files=config_files)
 
         repo = Repository(root=repo_root)
-        repo.fill_from_config(config)
 
-        config = cls._merge_config(config, sections=sections, extra=extra)
+        config_view = cls._merge_config(config, sections=sections, extra=extra)
 
-        return cls(root=repo_root, config=config, repository=repo)
+        return cls(root=repo_root, config=config_view, repository=repo)
