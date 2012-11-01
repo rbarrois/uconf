@@ -88,14 +88,6 @@ class GlobbingDict(dict):
         return "GlobbingDict(%s)" % super(GlobbingDict, self).__repr__()
 
 
-def _flatten(fields, separator=None):
-    """Flatten a list of space-separated names."""
-    flattened = set()
-    for field in fields:
-        flattened |= set(field.split(separator))
-    return flattened
-
-
 class RepositoryView(object):
     """A repository, as seen for a given set of initial categories.
 
@@ -191,12 +183,12 @@ class Repository(object):
     def _read_category_rules(self, rules):
         for rule_text, extra_categories in rules.items():
             rule = self.rule_lexer.get_rule(rule_text)
-            self.category_rules.append((rule, _flatten(extra_categories)))
+            self.category_rules.append((rule, helpers.flatten(extra_categories)))
 
     def _read_file_rules(self, rules):
         for rule_text, filenames in rules.items():
             rule = self.rule_lexer.get_rule(rule_text)
-            for filename in _flatten(filenames, ' '):
+            for filename in helpers.flatten(filenames, ' '):
                 self.file_rules.append((rule, filename))
 
     def _read_file_actions(self, actions):

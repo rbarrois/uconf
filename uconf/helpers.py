@@ -21,6 +21,14 @@ def filter_iter(iterator, items, key=lambda o: o, empty_is_all=False):
             yield item
 
 
+def flatten(fields, separator=None):
+    """Flatten a list of space-separated names."""
+    flattened = set()
+    for field in fields:
+        flattened |= set(field.split(separator))
+    return flattened
+
+
 def get_absolute_path(path, base=''):
     path = os.path.join(base, os.path.expanduser(path))
     return os.path.abspath(path)
