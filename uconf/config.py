@@ -230,6 +230,8 @@ class Env(object):
             target = helpers.get_absolute_path(target, base=self.root)
         self.target = target
 
+        self._forward_fs = self._backward_fs = self._repo_fs = None
+
     @property
     def uconf_dir(self):
         return os.path.join(self.root, constants.REPO_SUBFOLDER)
@@ -253,13 +255,22 @@ class Env(object):
         return self.repository.extract(initial_cats)
 
     def get_forward_fs(self):
-        return fs.FileSystem(self.target, dry_run=self.get('dry_run', False))
+        if self._forward_fs is None:
+            self._forward_fs = fs.FileSystem(self.target,
+                    dry_run=self.get('dry_run', False))
+        return self._forward_fs
 
     def get_backward_fs(self):
-        return fs.FileSystem(self.root, dry_run=self.get('dry_run', False))
+        if self._backward_fs is None:
+            self._backward_fs = fs.FileSystem(self.root,
+                    dry_run=self.get('dry_run', False))
+        return self._backward_fs
 
     def get_repo_fs(self):
-        return fs.FileSystem(self.uconf_dir, dry_run=self.get('dry_run', False))
+        if self._repo_fs is none:
+            self._repo_fs = fs.FileSystem(self.uconf_dir,
+                    dry_run=self.get('dry_run', False))
+        return self._repo_fs
 
     @classmethod
     def _walk_root(cls, base):
