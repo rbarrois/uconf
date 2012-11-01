@@ -10,10 +10,14 @@ from fs import osfs, multifs, mountfs, memoryfs
 from fs.wrapfs import readonlyfs
 import hashlib
 import io
+import logging
 import os
 import stat
 
 from . import helpers
+
+
+logger = logging.getLogger(__name__)
 
 
 class FileSystem(object):
@@ -63,8 +67,18 @@ class FileSystem(object):
     def get_changes(self):
         if self.dry_run:
             for path, fs in self.subfs.items():
-                for subpath in fs.ilistdir(full=True):
-                    yield path, subpath
+                for subpath in fs.walkfiles():
+                    length = len(fs.getcontents(subpath))
+                    yield '%s%s' % (path, subpath), length
+
+    def __del__(self):
+        try:
+            if self.dry_run:
+                for path, lenth in self.get_changes():
+                    logger.info("[Dry-run] Updated path %s (%d bytes)", path, lenth)
+        except:
+            # Something went wrong while deleting ourselves.
+            pass
 
     def __getattr__(self, name):
         return getattr(self.fs, name)
