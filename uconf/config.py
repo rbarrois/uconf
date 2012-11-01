@@ -222,7 +222,7 @@ class Env(object):
             target = helpers.get_absolute_path(target, base=self.root)
         self.target = target
 
-        self._forward_fs = self._backward_fs = self._repo_fs = None
+        self._forward_fs = self._backward_fs = self._uconf_fs = self._repo_fs = None
 
     @property
     def uconf_dir(self):
@@ -258,9 +258,17 @@ class Env(object):
                     dry_run=self.get('dry_run', False))
         return self._backward_fs
 
+    def get_uconf_fs(self):
+        """Retrieve the filesystem associated with the private uconf dir."""
+        if self._uconf_fs is None:
+            self._uconf_fs = fs.FileSystem(self.uconf_dir,
+                    dry_run=self.get('dry_run', False))
+        return self._uconf_fs
+
     def get_repo_fs(self):
-        if self._repo_fs is none:
-            self._repo_fs = fs.FileSystem(self.uconf_dir,
+        """Retrieve a filesystem for the repository, including uconf."""
+        if self._repo_fs is None:
+            self._repo_fs = fs.FileSystem(self.root,
                     dry_run=self.get('dry_run', False))
         return self._repo_fs
 

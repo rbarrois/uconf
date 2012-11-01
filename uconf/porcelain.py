@@ -105,7 +105,7 @@ class ImportFiles(Porcelain):
                 actions_config[storage] = action_text
 
         # Write out the configuration
-        self.env.repository.write_config(self.env.get_repo_fs())
+        self.env.repository.write_config(self.env.get_uconf_fs())
 
 
 class FilePorcelain(Porcelain):
