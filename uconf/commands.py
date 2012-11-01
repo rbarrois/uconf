@@ -259,8 +259,11 @@ class ListFiles(WithRepoCommand):
     help = "List all registered files"
 
     def run(self):
+        target = self.env.target
         for filename in sorted(self.active_repository.iter_files()):
-            self.info(filename)
+            file_config = self.active_repository.get_file_config(filename)
+            self.info("%s -> %s", filename,
+                file_config.get_destination(filename, target))
 
 
 class ListCategories(WithRepoCommand):
