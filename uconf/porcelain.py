@@ -57,7 +57,7 @@ class ImportFiles(Porcelain):
             - the 'storage' path is relative to the repository root
             - the 'target' path is relative to the install root
         """
-        target_root = self.env.get('target', '') or ''
+        target_root = self.env.target
 
         targets = [
             helpers.get_relative_path(target_root, target, base=target_root)

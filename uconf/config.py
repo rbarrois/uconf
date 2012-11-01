@@ -45,7 +45,7 @@ class FileConfig(object):
         self.action = action
         self.options = options
 
-    def get_destination(self, filename, target):
+    def get_destination(self, filename, target=''):
         """Find the appropriate target for a file."""
         if 'dest' in self.options:
             # Explicit target path
@@ -62,7 +62,7 @@ class FileConfig(object):
     def get_action(self, filename, env):
         action = self.ACTIONS[self.action]
         abs_source = helpers.get_absolute_path(filename, base=env.root)
-        abs_dest = self.get_destination(filename, env.get('target'))
+        abs_dest = self.get_destination(filename, env.target)
 
         return action(source=abs_source, destination=abs_dest,
             env=env, **self.options)
@@ -225,6 +225,10 @@ class Env(object):
         self.root = root
         self.repository = repository
         self.config = config
+        target = self.config.get('target')
+        if target:
+            target = helpers.get_absolute_path(target, base=self.root)
+        self.target = target
 
     @property
     def uconf_dir(self):
@@ -249,7 +253,7 @@ class Env(object):
         return self.repository.extract(initial_cats)
 
     def get_forward_fs(self):
-        return fs.FileSystem(self.get('target'), dry_run=self.get('dry_run', False))
+        return fs.FileSystem(self.target, dry_run=self.get('dry_run', False))
 
     def get_backward_fs(self):
         return fs.FileSystem(self.root, dry_run=self.get('dry_run', False))
