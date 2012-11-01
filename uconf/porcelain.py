@@ -76,20 +76,21 @@ class ImportFiles(Porcelain):
 
     def handle(self, files, categories, action=None, action_params=(),
             folder=None, *args, **kwargs):
-        repo_config = self.env.repository.config
+        files_config = self.env.repository.files_config
+        actions_config = self.env.repository.actions_config
 
         # Cleanup paths
         paths = self._prepare_files(files, storage_folder=folder)
         files_text = ' '.join(storage for storage, _install in paths)
 
         # Add to the 'files' section
-        if files_text in list(repo_config.get('files', categories)):
+        if files_text in list(files_config[categories]):
             self.logger.warning("Files '%s' already registered for categories %r",
                 files_text, categories)
         else:
             self.logger.info("Registering files '%s' for categories %r",
                 files_text, categories)
-            repo_config.add('files', categories, files_text)
+            files_config.add(categories, files_text)
 
         # Handle dedicated action/options for files
         for storage, install in paths:
@@ -101,7 +102,7 @@ class ImportFiles(Porcelain):
             if action_text:
                 self.logger.info("Adding rule %r for files '%s'",
                     action_text, storage)
-                repo_config.add_or_update('actions', storage, action_text)
+                actions_config[storage] = action_text
 
         # Write out the configuration
         self.env.repository.write_config(self.env.get_repo_fs())

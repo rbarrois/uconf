@@ -134,6 +134,9 @@ class Repository(object):
     def __init__(self, root=None, *args, **kwargs):
         self.root = root
         self.config = confutils.ConfigFile()
+        self.actions_config = self.config.section_view('actions')
+        self.files_config = self.config.section_view('files', True)
+        self.categories_config = self.config.section_view('categories', True)
 
         self.category_rules = []
         self.file_rules = []
@@ -173,12 +176,9 @@ class Repository(object):
 
         self.config.parse_file(self.config_path, skip_unreadable=False)
 
-        self._read_category_rules(
-                self.config.section_view('categories', multi_value=True))
-        self._read_file_rules(
-                self.config.section_view('files', multi_value=True))
-        self._read_file_actions(
-                self.config.section_view('actions', multi_value=False))
+        self._read_category_rules(self.categories_config)
+        self._read_file_rules(self.files_config)
+        self._read_file_actions(self.actions_config)
 
     def _read_category_rules(self, rules):
         for rule_text, extra_categories in rules.items():
