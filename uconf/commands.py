@@ -254,6 +254,23 @@ class ImportFile(WithRepoCommand):
         )
 
 
+class RenameFile(WithRepoCommand):
+    name = 'mv'
+    help = "Rename a file within the repository"
+
+    @classmethod
+    def register_options(cls, parser):
+        parser.add_argument('source', help="The file to rename")
+        parser.add_argument('dest', help="The new path")
+        super(RenameFile, cls).register_options(parser)
+
+    def run(self):
+        source = self.env.get('source')
+        dest = self.env.get('dest')
+        p = porcelain.RenameFile(self.env, self.active_repository)
+        p.handle(source, dest)
+
+
 class ListFiles(WithRepoCommand):
     name = 'files'
     help = "List all registered files"
@@ -282,6 +299,7 @@ base_commands = [
     ListFiles,
     ListCategories,
     ImportFile,
+    RenameFile,
     Make,
     Back,
     Diff,

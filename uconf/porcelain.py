@@ -108,6 +108,45 @@ class ImportFiles(Porcelain):
         self.env.repository.write_config(self.env.get_uconf_fs())
 
 
+class RenameFile(Porcelain):
+    """Rename a file within the repository."""
+
+    def _rename_in_files(self, source, dest):
+        repo_files = self.env.repository.files_config
+        updates = []
+        for categories, file_lists in repo_files.items():
+            if source in helpers.flatten(file_lists):
+                updates.append((categories, file_lists))
+
+        for categories, old_files in updates:
+            new_files = [fl.replace(source, dest) for fl in old_files]
+            repo_files[categories] = new_files
+
+    def _rename_in_actions(self, source, dest):
+        """Rename the file in the 'actions' section of the repo's config."""
+        repo_actions = self.env.repository.actions_config
+        if source in repo_actions:
+            repo_actions[dest] = repo_actions.pop(source)
+
+    def handle(self, source, dest, *args, **kwargs):
+        """Renames a file within the repository, both on disk and in config.
+
+        The source and dest arguments should be relative to the repository root.
+        """
+        source = helpers.get_relative_path(self.env.root, source, base=self.env.root)
+        dest = helpers.get_relative_path(self.env.root, dest, base=self.env.root)
+
+        self._rename_in_files(source, dest)
+        self._rename_in_actions(source, dest)
+
+        abs_source = helpers.get_absolute_path(source, base=self.env.root)
+        abs_dest = helpers.get_absolute_path(dest, base=self.env.root)
+
+        fs = self.env.get_repo_fs()
+        fs.rename(abs_source, abs_dest)
+        self.env.repository.write_config(fs)
+
+
 class FilePorcelain(Porcelain):
     """Porcelain command for a single file."""
 
