@@ -1,5 +1,7 @@
-# coding: utf-8
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Copyright (c) 2010-2012 Raphaël Barrois
+# This software is distributed under the two-clause BSD license.
 
 import re
 import unittest

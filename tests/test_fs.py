@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright (c) 2012 Raphaël Barrois
+# This software is distributed under the two-clause BSD license.
 
 
 import io

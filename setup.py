@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# Copyright (c) 2010-2012 Raphaël Barrois
+# This software is distributed under the two-clause BSD license.
 
 from setuptools import setup, find_packages
 import os
