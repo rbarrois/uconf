@@ -35,7 +35,7 @@ setup(
     name=PACKAGE,
     version=get_version(PACKAGE),
     author="Raphaël Barrois",
-    author_email="raphael.barrois@polytechnique.org",
+    author_email="raphael.barrois+@polytechnique.org",
     description='UConf, a smart tool for managing config files',
     license="GPLv3+",
     keywords=['configuration', 'management', 'uconf', 'confmgr', 'config'],

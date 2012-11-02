@@ -3,4 +3,4 @@
 # This software is distributed under the two-clause BSD license.
 
 __version__ = '0.2.0'
-__author__ = "Raphaël Barrois <raphael.barrois@polytechnique.org>"
+__author__ = "Raphaël Barrois <raphael.barrois+uconf@polytechnique.org>"
