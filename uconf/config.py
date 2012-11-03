@@ -73,12 +73,21 @@ class FileConfig(object):
         return '<FileConfig: %s %r>' % (self.action, self.options)
 
 
-class GlobbingDict(dict):
+class GlobStore(object):
+    def __init__(self, *args):
+        self.entries = list(*args)
+
     def __getitem__(self, key):
-        for glob, value in self.items():
+        for glob, value in self.entries:
             if fnmatch.fnmatchcase(key, glob):
                 return value
         raise KeyError("Key %s not found in %r" % (key, self))
+
+    def __setitem__(self, key, value):
+        for i, entry in enumerate(self.entries):
+            if key == entry[0]:
+                self.entries[i] = (key, value)
+        self.entries.append((key, value))
 
     def get(self, key, default=None):
         try:
@@ -87,7 +96,7 @@ class GlobbingDict(dict):
             return default
 
     def __repr__(self):
-        return "GlobbingDict(%s)" % super(GlobbingDict, self).__repr__()
+        return "GlobStore(%r)" % self.entries
 
 
 class RepositoryView(object):
@@ -142,7 +151,7 @@ class Repository(object):
 
         self.category_rules = []
         self.file_rules = []
-        self.file_configs = GlobbingDict()
+        self.file_configs = GlobStore()
         self.rule_lexer = rule_parser.RuleLexer()
         self.action_lexer = action_parser.ActionLexer()
 
