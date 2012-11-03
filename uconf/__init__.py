@@ -2,5 +2,5 @@
 # -*- coding: utf-8 -*-
 # This software is distributed under the two-clause BSD license.
 
-__version__ = '0.3.3'
+__version__ = '0.3.4-alpha'
 __author__ = "Raphaël Barrois <raphael.barrois+uconf@polytechnique.org>"
