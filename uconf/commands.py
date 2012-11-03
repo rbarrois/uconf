@@ -161,7 +161,11 @@ class Make(WithRepoCommand):
     def run(self):
         p = porcelain.MakeFile(self.env, self.active_repository)
         for filename in self._get_files(self.env.get('files')):
-            p.handle(filename)
+            try:
+                p.handle(filename)
+            except PorcelainError as e:
+                logger.exception("Error while handling %s: %r", filename, e)
+                continue
 
 
 class Back(WithRepoCommand):
@@ -181,7 +185,11 @@ class Back(WithRepoCommand):
     def run(self):
         p = porcelain.BackFile(self.env, self.active_repository)
         for filename in self._get_files(self.env.get('files')):
-            p.handle(filename)
+            try:
+                p.handle(filename)
+            except PorcelainError as e:
+                logger.exception("Error while handling %s: %r", filename, e)
+                continue
 
 
 class Diff(WithRepoCommand):
@@ -201,7 +209,11 @@ class Diff(WithRepoCommand):
     def run(self):
         p = porcelain.DiffFile(self.env, self.active_repository)
         for filename in self._get_files(self.env.get('files')):
-            p.handle(filename)
+            try:
+                p.handle(filename)
+            except PorcelainError as e:
+                logger.exception("Error while handling %s: %r", filename, e)
+                continue
 
 
 class BackDiff(WithRepoCommand):
@@ -221,7 +233,11 @@ class BackDiff(WithRepoCommand):
     def run(self):
         p = porcelain.BackDiffFile(self.env, self.active_repository)
         for filename in self._get_files(self.env.get('files')):
-            p.handle(filename)
+            try:
+                p.handle(filename)
+            except PorcelainError as e:
+                logger.exception("Error while handling %s: %r", filename, e)
+                continue
 
 
 class ImportFile(WithRepoCommand):
