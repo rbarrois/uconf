@@ -260,27 +260,31 @@ class Env(object):
     def get_forward_fs(self):
         if self._forward_fs is None:
             self._forward_fs = fs.FileSystem(self.target,
-                    dry_run=self.get('dry_run', False))
+                    dry_run=self.get('dry_run', False),
+                    default_encoding=self.get('file_encoding', 'utf8'))
         return self._forward_fs
 
     def get_backward_fs(self):
         if self._backward_fs is None:
             self._backward_fs = fs.FileSystem(self.root,
-                    dry_run=self.get('dry_run', False))
+                    dry_run=self.get('dry_run', False),
+                    default_encoding=self.get('file_encoding', 'utf8'))
         return self._backward_fs
 
     def get_uconf_fs(self):
         """Retrieve the filesystem associated with the private uconf dir."""
         if self._uconf_fs is None:
             self._uconf_fs = fs.FileSystem(self.uconf_dir,
-                    dry_run=self.get('dry_run', False))
+                    dry_run=self.get('dry_run', False),
+                    default_encoding=self.get('file_encoding', 'utf8'))
         return self._uconf_fs
 
     def get_repo_fs(self):
         """Retrieve a filesystem for the repository, including uconf."""
         if self._repo_fs is None:
             self._repo_fs = fs.FileSystem(self.root,
-                    dry_run=self.get('dry_run', False))
+                    dry_run=self.get('dry_run', False),
+                    default_encoding=self.get('file_encoding', 'utf8'))
         return self._repo_fs
 
     @classmethod
