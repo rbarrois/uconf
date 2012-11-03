@@ -1,8 +1,8 @@
 # File access
-fs
+fs>=0.4.1
 
 # Parsing
 tdparser
 
 # Configuration
-confutils>=0.3.2
+confutils>=0.3.6
