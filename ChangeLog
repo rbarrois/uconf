@@ -1,20 +1,54 @@
-================================================================================
-VERSION 0.1.0d                                                        XX XX XXXX
+v0.3.2 (03/11/2012)
+===================
 
-================================================================================
-VERSION 0.1.0c                                                        19 07 2010
+*New:*
 
-Include basic "export" command
+    * When a command fails on a file, keep working on other files
 
-================================================================================
-VERSION 0.1.0b                                                        09 03 2010
+*Bugfix:*
 
-A few fixes
+    * Fix priority of file rules (first rules are executed first)
 
-================================================================================
-VERSION 0.1.0a                                                        20 11 2009
+v0.3.1 (02/11/2012)
+===================
 
-First release of uconf
+*Bugfix:*
 
-================================================================================
-vim:et:ts=4:sw=4:tw=80:enc=utf-8:
+    * Packaging fixes
+
+v0.3.0 (02/11/2012)
+===================
+
+*New:*
+
+    * First working version of uconf
+
+v0.2.0 (unreleased)
+===================
+
+*New:*
+
+    * First draft of a project rewrite, as 'uconf'
+
+v0.1.0c (19 07 2010)
+====================
+
+*New:*
+
+    * Include basic "export" command
+
+v0.1.0b (09 03 2010)
+====================
+
+*Bugfix:*
+
+    * A few fixes
+
+v0.1.0a (20 11 2009)
+====================
+
+*New:*
+
+    * First release of confmgr
+
+.. vim:et:ts=4:sw=4:tw=79:ft=rst:
