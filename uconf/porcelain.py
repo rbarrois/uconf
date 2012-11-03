@@ -181,9 +181,9 @@ class BackFile(FilePorcelain):
 class DiffFile(FilePorcelain):
     def handle_file(self, filename, file_config):
         action = file_config.get_action(filename, self.env)
-        old, new = action.diff(self.active_repo.categories)
-        if old != new:
-            diff = difflib.unified_diff(old, new,
+        planned, actual = action.diff(self.active_repo.categories)
+        if planned != actual:
+            diff = difflib.unified_diff(actual, planned,
                 fromfile=action.destination, tofile=action.destination, lineterm='')
             diff = ('',) + tuple(diff)
             diff = '\n'.join(diff)
@@ -193,9 +193,9 @@ class DiffFile(FilePorcelain):
 class BackDiffFile(FilePorcelain):
     def handle_file(self, filename, file_config):
         action = file_config.get_action(filename, self.env)
-        old, new = action.backdiff(self.active_repo.categories)
-        if old != new:
-            diff = difflib.unified_diff(old, new,
+        planned, actual = action.backdiff(self.active_repo.categories)
+        if planned != actual:
+            diff = difflib.unified_diff(actual, planned,
                 fromfile=action.source, tofile=action.source, lineterm='')
             diff = ('',) + tuple(diff)
             diff = '\n'.join(diff)
