@@ -163,7 +163,7 @@ class Make(WithRepoCommand):
         for filename in self._get_files(self.env.get('files')):
             try:
                 p.handle(filename)
-            except PorcelainError as e:
+            except porcelain.PorcelainError as e:
                 logger.exception("Error while handling %s: %r", filename, e)
                 continue
 
@@ -187,7 +187,7 @@ class Back(WithRepoCommand):
         for filename in self._get_files(self.env.get('files')):
             try:
                 p.handle(filename)
-            except PorcelainError as e:
+            except porcelain.PorcelainError as e:
                 logger.exception("Error while handling %s: %r", filename, e)
                 continue
 
@@ -211,7 +211,7 @@ class Diff(WithRepoCommand):
         for filename in self._get_files(self.env.get('files')):
             try:
                 p.handle(filename)
-            except PorcelainError as e:
+            except porcelain.PorcelainError as e:
                 logger.exception("Error while handling %s: %r", filename, e)
                 continue
 
@@ -235,7 +235,7 @@ class BackDiff(WithRepoCommand):
         for filename in self._get_files(self.env.get('files')):
             try:
                 p.handle(filename)
-            except PorcelainError as e:
+            except porcelain.PorcelainError as e:
                 logger.exception("Error while handling %s: %r", filename, e)
                 continue
 
