@@ -5,6 +5,7 @@ v0.3.4 (current)
 
     * uconf diff and uconf backdiff behave as expected:
       they show the diff that would be applied to target/source.
+    * Fix hostname computation
 
 v0.3.3 (03/11/2012)
 ===================
