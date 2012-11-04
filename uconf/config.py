@@ -13,7 +13,6 @@ the repository, regardless of current settings.
 
 import fnmatch
 import os
-import socket
 import stat
 import time
 

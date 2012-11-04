@@ -6,6 +6,7 @@ from __future__ import unicode_literals, absolute_import
 
 from fs import mountfs
 import os
+import socket
 
 
 def filter_iter(iterator, items, key=lambda o: o, empty_is_all=False):
@@ -44,3 +45,9 @@ def rebase_fs(base, filesystem):
 def get_relative_path(root, path, base=''):
     """Converts the given 'path' to a path relative to the 'root'."""
     return os.path.relpath(get_absolute_path(path, base=base), root)
+
+
+def get_hostnames(name=''):
+    """Return the list of hostnames for a name (defaults to local host)."""
+    fqdn = socket.getfqdn(name)
+    return fqdn, fqdn.split('.')[0]

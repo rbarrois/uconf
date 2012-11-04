@@ -6,7 +6,6 @@
 from __future__ import unicode_literals
 
 import os.path
-import socket
 import sys
 
 from confutils import Default
@@ -130,8 +129,7 @@ class WithRepoCommand(BaseCommand):
     def __init__(self, *args, **kwargs):
         super(WithRepoCommand, self).__init__(*args, **kwargs)
 
-        initial_cats = self.env.getlist('initial',
-            (socket.getfqdn(), socket.gethostname()))
+        initial_cats = self.env.getlist('initial', helpers.get_hostnames())
         self.active_repository = self.env.get_active_repository(initial_cats)
 
     def _get_files(self, files):
