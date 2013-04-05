@@ -3,9 +3,12 @@
 # Copyright (c) 2010-2013 Raphaël Barrois
 # This software is distributed under the two-clause BSD license.
 
-from setuptools import setup, find_packages
 import os
 import re
+import sys
+
+from distutils.core import setup
+from distutils import cmd
 
 root_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -23,9 +26,65 @@ def get_version(package_name):
 
 
 def read_requirements(filename):
+    dep_re = re.compile(r'^([\w_-]+)((?:>=|<=|==|!=).*)?$')
     with open(filename, 'rt') as f:
         lines = [l.strip() for l in f]
-        return [l for l in lines if l and not l.startswith('#')]
+    lines = [l for l in lines if l and not l.startswith('#')]
+
+    deps = []
+
+    for line in lines:
+        match = dep_re.match(line)
+        if not match:
+            raise ValueError("Invalid dependency line %r in %s" % (line, filename))
+        dep, v = match.groups()
+        if v:
+            deps.append('%s (%s)' % (dep, v))
+        else:
+            deps.append(dep)
+    return deps
+
+
+class test(cmd.Command):
+    """Run the tests for this package."""
+    command_name = 'test'
+    description = 'run the tests associated with the package'
+
+    user_options = [
+        ('test-suite=', None, "A test suite to run (defaults to 'tests')"),
+    ]
+
+    def initialize_options(self):
+        self.test_runner = None
+        self.test_suite = None
+
+    def finalize_options(self):
+        self.ensure_string('test_suite', 'tests')
+
+    def run(self):
+        """Run the test suite."""
+        try:
+            import unittest2 as unittest
+        except ImportError:
+            import unittest
+
+        if self.verbose:
+            verbosity=1
+        else:
+            verbosity=0
+
+        loader = unittest.TestLoader()
+        suite = unittest.TestSuite()
+
+        if self.test_suite == 'tests':
+            for test_module in loader.discover('.'):
+                suite.addTest(test_module)
+        else:
+            suite.addTest(loader.loadTestsFromName(self.test_suite))
+
+        result = unittest.TextTestRunner(verbosity=verbosity).run(suite)
+        if not result.wasSuccessful():
+            sys.exit(1)
 
 
 PACKAGE = 'uconf'
@@ -40,13 +99,9 @@ setup(
     license="BSD",
     keywords=['configuration', 'management', 'uconf', 'confmgr', 'config'],
     url="http://uconf.xelnor.net/",
-    packages=find_packages(),
+    packages=[PACKAGE],
     scripts=['bin/uconf'],
-    setup_requires=[
-        'distribute',
-    ],
-    install_requires=read_requirements('requirements.txt'),
-    test_requires=read_requirements('test_requirements.txt'),
+    requires=read_requirements('requirements.txt'),
     classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Console",
@@ -60,5 +115,5 @@ setup(
         "Topic :: System :: Installation/Setup",
         "Topic :: System :: Systems Administration",
     ],
-    test_suite='tests',
+    cmdclass={'test': test},
 )
