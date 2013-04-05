@@ -1,5 +1,5 @@
-v0.3.4 (current)
-================
+v0.3.4 (2013-04-05)
+===================
 
 *Bugfix:*
 
@@ -7,7 +7,7 @@ v0.3.4 (current)
       they show the diff that would be applied to target/source.
     * Fix hostname computation
 
-v0.3.3 (03/11/2012)
+v0.3.3 (2012-11-03)
 ===================
 
 *Bugfix:*
@@ -15,7 +15,7 @@ v0.3.3 (03/11/2012)
     * Fix handling of subcommand errors
     * Fix default encoding of files
 
-v0.3.2 (03/11/2012)
+v0.3.2 (2012-11-03)
 ===================
 
 *New:*
@@ -26,14 +26,14 @@ v0.3.2 (03/11/2012)
 
     * Fix priority of file rules (first rules are executed first)
 
-v0.3.1 (02/11/2012)
+v0.3.1 (2012-11-02)
 ===================
 
 *Bugfix:*
 
     * Packaging fixes
 
-v0.3.0 (02/11/2012)
+v0.3.0 (2012-11-02)
 ===================
 
 *New:*
@@ -47,21 +47,21 @@ v0.2.0 (unreleased)
 
     * First draft of a project rewrite, as 'uconf'
 
-v0.1.0c (19 07 2010)
+v0.1.0c (2010-07-19)
 ====================
 
 *New:*
 
     * Include basic "export" command
 
-v0.1.0b (09 03 2010)
+v0.1.0b (2010-03-09)
 ====================
 
 *Bugfix:*
 
     * A few fixes
 
-v0.1.0a (20 11 2009)
+v0.1.0a (2009-11-20)
 ====================
 
 *New:*
