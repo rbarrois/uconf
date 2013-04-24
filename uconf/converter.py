@@ -336,7 +336,7 @@ class Generator(object):
             if last_block.published:
                 published = False
             else:
-                rule = rule_parser.parse_rule(args)
+                rule = self.rule_lexer.get_rule(args)
                 published = rule.test(self.categories)
 
             self.enter_block(Block.KIND_IF, published=published)
