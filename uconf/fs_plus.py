@@ -172,7 +172,7 @@ class WithPermsFS(object):
                 raise UnsupportedPermError(perm)
         self._apply_group_perms(path, perms)
 
-    def _apply_group_perms(self, path, perms)
+    def _apply_group_perms(self, path, perms):
         raise UnsupportedError("setting group perms")
 
     def get_world_perms(self, path):
@@ -267,7 +267,7 @@ class WithPermsFS(object):
             raise UnsupportedError("using chmod_dir on a non-dir", path)
         self._chmod(path, mode, for_file=False)
 
-    def _chmod(self, path, mode, for_file)
+    def _chmod(self, path, mode, for_file):
         """Change the mode of a file/directory.
 
         :param path: path of the file/directory to change mode of
