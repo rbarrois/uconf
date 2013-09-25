@@ -74,7 +74,7 @@ class BaseAction(object):
 
     def _ensure_dir_exists(self, path):
         dirname = os.path.dirname(path)
-        self.fs.makedir(dirname, recursive=True, allow_recreate=True)
+        self.fs.makedirs(dirname)
 
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.source)
@@ -111,7 +111,7 @@ class FileContentAction(BaseAction):
     """An action based on file *contents*."""
 
     def _forward(self, categories):
-        source_lines = self.fs.readlines(self.source)
+        source_lines = self._readlines(self.source)
         destination_lines = self.forward_content(source_lines, categories)
 
         self.fs.writelines(self.destination, destination_lines)
@@ -129,8 +129,8 @@ class FileContentAction(BaseAction):
         raise NotImplementedError()
 
     def _backward(self, categories):
-        source_lines = self.fs.readlines(self.source)
-        modified_lines = self.fs.readlines(self.destination)
+        source_lines = self._readlines(self.source)
+        modified_lines = self._readlines(self.destination)
         updated_lines = self.backward_content(source_lines, categories, modified_lines)
 
         self.fs.writelines(self.source, updated_lines)
@@ -148,16 +148,21 @@ class FileContentAction(BaseAction):
         """
         raise NotImplementedError()
 
+    def _readlines(self, path, ignore_empty=True):
+        if ignore_empty and not self.fs.file_exists(path):
+            return []
+        return self.fs.readlines(path)
+
     def _diff(self, categories):
-        source_lines = self.fs.readlines(self.source)
+        source_lines = self._readlines(self.source)
         planned_lines = self.forward_content(source_lines, categories)
-        actual_lines = self.fs.readlines(self.destination)
+        actual_lines = self._readlines(self.destination)
 
         return list(planned_lines), list(actual_lines)
 
     def _backdiff(self, categories):
-        source_lines = list(self.fs.readlines(self.source))
-        destination_lines = list(self.fs.readlines(self.destination))
+        source_lines = list(self._readlines(self.source))
+        destination_lines = list(self._readlines(self.destination))
         backported_lines = self.backward_content(
                 source_lines, categories, destination_lines)
 
