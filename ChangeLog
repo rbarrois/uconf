@@ -1,3 +1,18 @@
+v0.3.7 (2014-01-03)
+===================
+
+*Misc:*
+
+    * Replace ``pyfs`` with ``fslib``
+    * Switch packaging to setuptools
+
+v0.3.6 (2013-04-30)
+===================
+
+*Bugfix:*
+
+    * Fix packaging
+
 v0.3.5 (2013-04-25)
 ===================
 
