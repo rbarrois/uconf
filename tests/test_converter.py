@@ -175,7 +175,7 @@ class GeneratorTestCase(unittest.TestCase):
         g = converter.Generator(txt, categories=[], fs=None)
         expected = [converter.Line(s, s) for s in txt]
         out = list(g)
-        self.assertItemsEqual(expected, out)
+        self.assertEqual(expected, out)
 
     def test_nonmatching_if(self):
         txt = [
@@ -195,7 +195,7 @@ class GeneratorTestCase(unittest.TestCase):
             converter.Line('baz', 'baz'),
         ]
         out = list(g)
-        self.assertItemsEqual(expected, out)
+        self.assertEqual(expected, out)
 
     def test_unclosed_nonmatching_if(self):
         txt = [
@@ -211,7 +211,7 @@ class GeneratorTestCase(unittest.TestCase):
             converter.Line(None, 'bar'),
         ]
         out = list(g)
-        self.assertItemsEqual(expected, out)
+        self.assertEqual(expected, out)
 
     def test_matching_if(self):
         txt = [
@@ -231,7 +231,7 @@ class GeneratorTestCase(unittest.TestCase):
             converter.Line('baz', 'baz'),
         ]
         out = list(g)
-        self.assertItemsEqual(expected, out)
+        self.assertEqual(expected, out)
 
     def test_unclosed_matching_if(self):
         txt = [
@@ -247,7 +247,7 @@ class GeneratorTestCase(unittest.TestCase):
             converter.Line('bar', 'bar'),
         ]
         out = list(g)
-        self.assertItemsEqual(expected, out)
+        self.assertEqual(expected, out)
 
     def test_inner_block(self):
         txt = [
@@ -275,7 +275,7 @@ class GeneratorTestCase(unittest.TestCase):
             converter.Line('baz', 'baz'),
         ]
         out = list(g)
-        self.assertItemsEqual(expected, out)
+        self.assertEqual(expected, out)
 
 
 
