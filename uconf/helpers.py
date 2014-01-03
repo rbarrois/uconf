@@ -4,7 +4,6 @@
 
 from __future__ import unicode_literals, absolute_import
 
-from fs import mountfs
 import os
 import socket
 
@@ -34,12 +33,6 @@ def flatten(fields, separator=None):
 def get_absolute_path(path, base=''):
     path = os.path.join(base, os.path.expanduser(path))
     return os.path.abspath(path)
-
-
-def rebase_fs(base, filesystem):
-    mounted_fs = mountfs.MountFS()
-    mounted_fs.mount(base, filesystem)
-    return mounted_fs
 
 
 def get_relative_path(root, path, base=''):

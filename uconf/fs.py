@@ -20,6 +20,9 @@ import fslib.stacking
 logger = logging.getLogger(__name__)
 
 
+FSError = fslib.FSError
+
+
 class FSLoader(object):
     def __init__(self, *write_paths, **kwargs):
         self.dry_run = kwargs.pop('dry_run', False)

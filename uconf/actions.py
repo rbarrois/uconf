@@ -6,11 +6,11 @@ from __future__ import absolute_import, unicode_literals
 
 """Common action code."""
 
-import fs.errors
 import functools
 import os.path
 
 from . import converter
+from . import fs
 
 
 def catch_fs_exceptions(fun):
@@ -18,7 +18,7 @@ def catch_fs_exceptions(fun):
     def decorated(self, *args, **kwargs):
         try:
             return fun(self, *args, **kwargs)
-        except fs.errors.FSError as e:
+        except fs.FSError as e:
             print("Error while performing %s.%s(%s -> %s): %s" % (
                 self.__class__.__name__, fun.__name__,
                 self.source, self.destination,
