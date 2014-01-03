@@ -3,8 +3,6 @@
 # Copyright (c) 2010-2013 Raphaël Barrois
 # This software is distributed under the two-clause BSD license.
 
-from __future__ import unicode_literals
-
 import codecs
 import os
 import re
