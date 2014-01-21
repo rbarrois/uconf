@@ -19,9 +19,17 @@ class FileProcessor(object):
         self.src = list(src)
         self.fs = fs
 
+    def _get_gen_config(self, categories):
+        return GeneratorConfig(
+            categories=categories,
+            commands=DEFAULT_COMMANDS,
+            fs=self.fs,
+        )
+
     def forward(self, categories):
         """Process the source file with an active list of categories."""
-        generator = Generator(self.src, categories, self.fs)
+        gen_config = self._get_gen_config(categories)
+        generator = gen_config.load(self.src)
         for line in generator:
             if line.output is not None:
                 yield line.output
@@ -39,7 +47,8 @@ class FileProcessor(object):
         categories = frozenset(categories)
         original_output = self.forward(categories)
         diff = Differ(original_output, modified)
-        generator = Generator(self.src, categories, self.fs)
+        gen_config = self._get_gen_config(categories)
+        generator = gen_config.load(self.src)
         backporter = Backporter(diff, generator)
 
         for line in backporter:
@@ -230,71 +239,153 @@ class BlockStack(object):
         return self.blocks.pop()
 
 
-class Generator(object):
-    """Generate the output from a source.
+class BaseCommand(object):
+    """A command.
+
+    Entry points: get_keys(), handle(...).
+    """
+    keys = ()
+
+    def get_keys(self):
+        """Return the list of "keys" (or "commands") handled by this class."""
+        return self.keys
+
+    def handle(self, key, argline, state, config):
+        """Handle a line.
+
+        Args:
+            key (str): one of the keys in get_keys()
+            argline (str): everything after the key and a space
+            state (GeneratorState): the current state of the generator
+            config (GeneratorConfig): various config-time params of the generator
+        """
+        raise NotImplementedError()
+
+
+class BaseBlockCommand(BaseCommand):
+    enter_keys = ()
+    inside_keys = ()
+    exit_keys = ()
+
+    def get_keys(self):
+        return self.enter_keys + self.inside_keys + self.exit_keys
+
+    def handle(self, key, argline, state, config):
+        if key in self.enter_keys:
+            return self.enter(key, argline, state, config)
+        elif key in self.inside_keys:
+            return self.inside(key, argline, state, config)
+        else:
+            assert key in self.exit_keys
+            return self.exit(key, argline, state, config)
+
+    def enter(self, key, argline, state, config):
+        raise NotImplementedError()
+
+    def inside(self, key, argline, state, config):
+        raise NotImplementedError()
+
+    def exit(self, key, argline, state, config):
+        raise NotImplementedError()
+
+
+class IfBlockCommand(BaseBlockCommand):
+    enter_keys = ('if',)
+    inside_keys = ('else', 'elif')
+    exit_keys = ('endif',)
+
+    def __init__(self, **kwargs):
+        super(IfBlockCommand, self).__init__(**kwargs)
+        self.rule_lexer = rule_parser.RuleLexer()
+
+    def enter(self, key, argline, state, config):
+        rule = self.rule_lexer.get_rule(argline)
+        state.enter_block(Block.KIND_IF, published=rule.test(config.categories))
+
+    def inside(self, key, argline, state, config):
+        if key == 'else':
+            if argline:
+                state.error("Command 'else' takes no argument, got %r", argline)
+
+            last_block = state.leave_block(Block.KIND_IF)
+            state.enter_block(Block.KIND_IF, published=not last_block.published)
+        else:
+            assert key == 'elif'
+            last_block = state.leave_block(Block.KIND_IF)
+            if last_block.published:
+                published = False
+            else:
+                rule = self.rule_lexer.get_rule(argline)
+                published = rule.test(config.categories)
+
+            state.enter_block(Block.KIND_IF, published=published)
+
+    def exit(self, key, argline, state, config):
+        assert key == 'exit'
+        if argline:
+            state.error("Command 'exit' takes no argument, got %r", argline)
+        state.leave_block(Block.KIND_IF)
+
+
+class WithBlockCommand(BaseBlockCommand):
+    enter_keys = ('with', 'withfile')
+    exit_keys = ('endwith',)
+
+    with_args_re = re.compile(r'^(\w+)=(.*)$')
+
+    def _read_file(self, filename, config):
+        """Read one line from a file."""
+        return config.fs.read_one_line(filename)
+
+    def _parse_with_args(self, args, state, config):
+        """Parce "#@with" arguments (and validate the line structure)."""
+        match = self.with_args_re.match(args)
+        if not match:
+            state.error("Invalid 'with' argument %r", args)
+        return match.groups()
+
+    def enter(self, key, argline, state, config):
+        if key == 'with':
+            var, value = self._parse_with_args(argline, state=state)
+            state.enter_block(Block.KIND_WITH, context={var: value})
+        else:
+            assert key == 'withfile'
+            var, filename = self._parse_with_args(argline, state=state)
+            value = self._read_file(filename, config)
+            state.enter_block(Block.KIND_WITH, context={var: value})
+
+    def exit(self, key, argline, state, config):
+        last_block = state.leave_block(Block.KIND_WITH)
+        if argline and argline not in last_block.context:
+            raise CommandError("Block mismatch: closing 'with' block from line %d with invalid variable %r" % (last_block.start_line, argline))
+        del state.context[var]
+
+
+class GeneratorState(object):
+    """Handles the internal generator state.
 
     Attributes:
-        src (iterable of str): the source lines
-        categories (str set): the active categories
-        in_block (bool): whether the generator is in a block
         in_published_block (bool): whether the current block should be published
         context (str => str dict): maps a placeholder name to its content
-        fs (FileSystem): abstraction to the file system
         _current_lineno (int): the current line number
     """
 
-    command_re = re.compile(r'^["!#]@(if|else|elif|endif|with|withfile|endwith)(?: (.*))?$')
-    comment_re = re.compile(r'^["!#]@#')
-    escaped_re = re.compile(r'^["!#]@@')
-    with_args_re = re.compile(r'^(\w+)=(.*)$')
-
-    def __init__(self, src, categories, fs):
-        self.src = src
-        self.categories = categories
+    def __init__(self):
         self.block_stack = BlockStack()
         self.context = {}
-        self.fs = fs
-        self.rule_lexer = rule_parser.RuleLexer()
+
         self._current_lineno = 0
-
-    def __iter__(self):
-        for lineno, line in enumerate(self.src):
-            self._current_lineno = lineno
-
-            # Some comment
-            if self.comment_re.match(line):
-                yield Line(None, line)
-
-            # An escaped line
-            elif self.escaped_re.match(line):
-                yield Line(line[:2] + line[3:], line)
-
-            # A command line (dispatch to handle_command)
-            elif self.command_re.match(line):
-                command, args = self.command_re.match(line).groups()
-                self.handle_command(command, args)
-                yield Line(None, line)
-
-            # If displaying the line, replace placeholders.
-            elif self.in_published_block:
-                updated_line = line
-                for var, value in self.context.items():
-                    pattern = '@@%s@@' % var
-                    updated_line = updated_line.replace(pattern, value)
-                yield Line(updated_line, line)
-
-            # Not displaying the line
-            else:
-                yield Line(None, line)
-
-    def invalid(self, message, *args):
-        """Generate a contextualized error message."""
-        error = "Error on line %d: " % self._current_lineno
-        raise ValueError(error + message % args)
 
     @property
     def in_published_block(self):
         return self.block_stack.published
+
+    def error(self, message, *args):
+        err_msg = "Error on line %d: " % self._current_lineno
+        raise ValueError(error + message % args)
+
+    def advance_to(self, lineno):
+        self._current_lineno = lineno
 
     def enter_block(self, kind, published=True, context=None):
         return self.block_stack.enter(
@@ -310,57 +401,94 @@ class Generator(object):
         except ValueError as e:
             self.invalid("Error when closing block: %r", e)
 
-    def parse_with_args(self, args):
-        """Parce "#@with" arguments (and validate the line structure)."""
-        match = self.with_args_re.match(args)
-        if not match:
-            self.invalid("Invalid 'with' argument %r", args)
-        return match.groups()
 
-    def read_file(self, filename):
-        """Read one line from a file."""
-        return self.fs.read_one_line(filename)
+
+DEFAULT_COMMANDS = [
+    IfBlockCommand,
+    WithBlockCommand,
+]
+
+
+class Generator(object):
+    """Generate the output from a source.
+
+    Attributes:
+        src (iterable of str): the source lines
+        state (GeneratorState): the current generator state
+    """
+
+    command_prefix_re = re.compile(r'^(["!#]@)(.+)$')
+
+    def __init__(self, src, commands, config):
+        self.src = src
+        self.config = config
+        self.state = GeneratorState()
+        self.commands_by_key = {}
+        for command in commands:
+            for key in command.get_keys():
+                if key in self.commands_by_key:
+                    raise ValueError("Duplicate command for key %s: got %r and %r"
+                        % (key, command, self.commands_by_key[key]))
+                self.commands_by_key[key] = command
+
+    def __iter__(self):
+        for lineno, line in enumerate(self.src):
+            self.state.advance_to(lineno)
+
+            match = self.command_prefix_re.match(line)
+            if match:
+                prefix, command = match.groups()
+                output = self.handle_line(prefix, command)
+
+            # If displaying the line, replace placeholders.
+            elif self.state.in_published_block:
+                updated_line = line
+                for var, value in self.state.context.items():
+                    pattern = '@@%s@@' % var
+                    updated_line = updated_line.replace(pattern, value)
+                output = updated_line
+                yield Line(updated_line, line)
+
+            # Not displaying the line
+            else:
+                output = None
+
+            yield Line(output, line)
+
+
+    def handle_line(self, prefix, command):
+        if command.startswith('#'):
+            # A comment
+            return None
+
+        elif command.startswith('@'):
+            # An escaped line
+            return prefix + line[1:]
+
+        else:
+            name, args = command.split(' ', 1)
+            self.handle_command(name, args)
+            return None
 
     def handle_command(self, command, args):
         """Handle a "#@<command>" line."""
-        if command == 'if':
-            rule = self.rule_lexer.get_rule(args)
-            self.enter_block(Block.KIND_IF, published=rule.test(self.categories))
+        if command not in self.command_handlers:
+            raise CommandError("Unknown command '%s' (not in %r)" % (command, sorted(self.command_handlers)))
 
-        elif command == 'else':
-            last_block = self.leave_block(Block.KIND_IF)
-            self.enter_block(Block.KIND_IF, published=not last_block.published)
+        handler = self.commands_by_key[command]
+        handler.handle(command, args, self.state, self.config)
 
-        elif command == 'elif':
-            last_block = self.leave_block(Block.KIND_IF)
-            if last_block.published:
-                published = False
-            else:
-                rule = self.rule_lexer.get_rule(args)
-                published = rule.test(self.categories)
 
-            self.enter_block(Block.KIND_IF, published=published)
+class GeneratorConfig(object):
+    def __init__(self, categories, commands, fs, generator=Generator):
+        self.categories = categories
+        self.commands = commands
+        self.fs = fs
+        self.fs_root = '/'
+        self.generator_class = generator
 
-        elif command == 'endif':
-            self.leave_block(Block.KIND_IF)
-
-        elif command == 'with':
-            var, value = self.parse_with_args(args)
-            self.enter_block(Block.KIND_WITH, context={var: value})
-
-        elif command == 'withfile':
-            var, filename = self.parse_with_args(args)
-            self.enter_block(Block.KIND_WITH,
-                context={var: self.read_file(filename)})
-
-        elif command == 'endwith':
-            # FIXME: add support for multiple args
-            last_block = self.leave_block(Block.KIND_WITH)
-            if args and args not in last_block.context:
-                self.invalid(
-                    "Block mismatch: closing 'with' block from line %d with "
-                    "invalid variable %s", last_block.start_line, args)
-                del self.context[var]
-
-        else:
-            self.invalid("Invalid command '%s'", command)
+    def load(self, source_file):
+        return self.generator_class(source_file,
+            config=self,
+            commands=self.commands,
+        )
