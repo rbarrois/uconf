@@ -20,6 +20,7 @@ import confutils
 
 from . import action_parser
 from . import actions
+from . import compat
 from . import constants
 from . import fs
 from . import helpers
@@ -248,7 +249,7 @@ class Env(object):
 
     def getlist(self, key, default=(), separator=' '):
         value = self.get(key, default=default)
-        if isinstance(value, basestring):
+        if isinstance(value, compat.text_types):
             value = value.split(separator)
         return list(value)
 

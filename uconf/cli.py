@@ -48,7 +48,7 @@ class CLI(object):
     def __init__(self, progname):
         self.progname = progname
         self.parser = self.make_base_parser(self.progname)
-        self.subparsers = self.parser.add_subparsers(help="Commands")
+        self.subparsers = self.parser.add_subparsers(help="Commands", dest='subcommand')
 
         self.register_base_commands()
 
@@ -131,6 +131,10 @@ class CLI(object):
         self.setup_logging()
         # Add command-specific arguments
         args = self.parser.parse_args(argv)
+        command_name = args.subcommand
+        if command_name is None:
+            self.parser.print_help()
+            return
         command_class = args.command
 
         # Merge all pref bits

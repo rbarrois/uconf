@@ -22,7 +22,7 @@ class FileProcessor(object):
     def _get_gen_config(self, categories):
         return GeneratorConfig(
             categories=categories,
-            commands=DEFAULT_COMMANDS,
+            commands=[cmd() for cmd in DEFAULT_COMMANDS],
             fs=self.fs,
         )
 
@@ -321,9 +321,9 @@ class IfBlockCommand(BaseBlockCommand):
             state.enter_block(Block.KIND_IF, published=published)
 
     def exit(self, key, argline, state, config):
-        assert key == 'exit'
+        assert key == 'endif'
         if argline:
-            state.error("Command 'exit' takes no argument, got %r", argline)
+            state.error("Command 'endif' takes no argument, got %r", argline)
         state.leave_block(Block.KIND_IF)
 
 
@@ -447,7 +447,6 @@ class Generator(object):
                     pattern = '@@%s@@' % var
                     updated_line = updated_line.replace(pattern, value)
                 output = updated_line
-                yield Line(updated_line, line)
 
             # Not displaying the line
             else:
@@ -466,14 +465,17 @@ class Generator(object):
             return prefix + line[1:]
 
         else:
-            name, args = command.split(' ', 1)
+            if ' ' in command:
+                name, args = command.split(' ', 1)
+            else:
+                name, args = command, ''
             self.handle_command(name, args)
             return None
 
     def handle_command(self, command, args):
         """Handle a "#@<command>" line."""
-        if command not in self.command_handlers:
-            raise CommandError("Unknown command '%s' (not in %r)" % (command, sorted(self.command_handlers)))
+        if command not in self.commands_by_key:
+            raise CommandError("Unknown command '%s' (not in %r)" % (command, sorted(self.commands_by_key)))
 
         handler = self.commands_by_key[command]
         handler.handle(command, args, self.state, self.config)
