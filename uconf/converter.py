@@ -216,13 +216,12 @@ class BlockStack(object):
     def published(self):
         return all(b.published for b in self.blocks)
 
-    def get(self, key):
-        for block in reversed(self.blocks):
-            try:
-                return block.context[key]
-            except KeyError:
-                continue
-        raise KeyError("Key %s not found in %r" % (key, self))
+    @property
+    def merged_context(self):
+        context = {}
+        for block in self.blocks:
+            context.update(block.context)
+        return context
 
     def enter(self, *args, **kwargs):
         block = Block(*args, **kwargs)
@@ -372,13 +371,16 @@ class GeneratorState(object):
 
     def __init__(self):
         self.block_stack = BlockStack()
-        self.context = {}
 
         self._current_lineno = 0
 
     @property
     def in_published_block(self):
         return self.block_stack.published
+
+    @property
+    def context(self):
+        return self.block_stack.merged_context
 
     def error(self, message, *args):
         err_msg = "Error on line %d: " % self._current_lineno
