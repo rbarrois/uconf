@@ -1,3 +1,11 @@
+v0.3.8 (2014-03-08)
+===================
+
+*Misc:*
+
+    * Insert Py3 compatibility
+    * Fix handling of #@with
+
 v0.3.7 (2014-01-03)
 ===================
 
