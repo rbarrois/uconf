@@ -357,7 +357,6 @@ class WithBlockCommand(BaseBlockCommand):
         last_block = state.leave_block(Block.KIND_WITH)
         if argline and argline not in last_block.context:
             raise CommandError("Block mismatch: closing 'with' block from line %d with invalid variable %r" % (last_block.start_line, argline))
-        del state.context[var]
 
 
 class GeneratorState(object):
