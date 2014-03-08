@@ -336,7 +336,7 @@ class WithBlockCommand(BaseBlockCommand):
         """Read one line from a file."""
         return config.fs.read_one_line(filename)
 
-    def _parse_with_args(self, args, state, config):
+    def _parse_with_args(self, args, state):
         """Parce "#@with" arguments (and validate the line structure)."""
         match = self.with_args_re.match(args)
         if not match:
