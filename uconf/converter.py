@@ -137,8 +137,12 @@ class Backporter(object):
                 if action == 'delete':
                     # Deleting one line, advance the source
                     continue
+                elif action == 'equal':
+                    # No change
+                    yield line.origina
                 else:
-                    # Replacing / equal, write the current line
+                    assert action == "replace"
+                    # Backport the resulting line
                     yield self.reverse(output)
 
         # Handle additional lines from the diff
