@@ -152,38 +152,3 @@ Then the result of running ``uconf back shell/gitconfig`` will be:
       name = Raphaël "Xelnor" Barrois
       email = raphael.barrois@polytechnique.org
     #@endif
-
-
-Configuring
------------
-
-You can get started with ``uconf init <source_dir> <target_dir>``.
-This will generate the following layout::
-
-    ./<source_dir>
-        config
-        src/
-
-The ``config`` file is UConf's main entry point. Its content should look like::
-
-    [global]
-    ; Install files into the <target_dir> folder.
-    target: <target_dir>
-
-    ; Default to parsing the files.
-    default-action: parse
-
-    [categories]
-    ; Put your category definitions here
-    ; Example:
-    ; myserv: server
-    ; server and slave: not master
-
-    [files]
-    ; Add category-file rules
-    ; server: ssh/sshd_config
-    ; laptop: X11/xorg.conf
-
-    [rules]
-    ; Override file rules here
-    ; boot/splash_screen: copy
