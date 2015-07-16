@@ -61,7 +61,7 @@ Then, set a few settings:
     ssh/* = parse destdir=".ssh/"
 
     # shell/gitconfig goes to ~/.gitconfig
-    shell/gitconfig = ~/.gitconfig
+    shell/gitconfig = parse destdir="~/.gitconfig"
 
 
 Files
