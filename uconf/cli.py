@@ -22,14 +22,12 @@ The CLI parsing is a three-step process:
 import argparse
 import logging
 import os
-import stat
 
 import confutils
 
 from . import commands
 from . import config
 from . import constants
-from . import helpers
 from . import __version__
 
 
@@ -56,9 +54,9 @@ class CLI(object):
     # -------------------
 
     def make_base_parser(self, progname):
-        parser = argparse.ArgumentParser(prog=self.progname,
-            argument_default=Default(None))
-        parser.add_argument('--version', '-V', help="Display version", action='version',
+        parser = argparse.ArgumentParser(prog=self.progname, argument_default=Default(None))
+        parser.add_argument(
+            '--version', '-V', help="Display version", action='version',
             version='%(prog)s ' + __version__)
         return parser
 
@@ -66,26 +64,41 @@ class CLI(object):
         """Register global options"""
         parser.add_argument('--root', '-r', help="Set uconf repository root")
         parser.add_argument('--config-dir', '-c', help="Use uconf config dir CONFIG_DIR")
-        parser.add_argument('--prefs', '-p', nargs='*', default=constants.CONFIG_FILES,
-            help="Read user preferences from PREF files", metavar='PREF')
-        parser.add_argument('--version', '-V', help="Display version", action='version',
-            version='%(prog)s ' + __version__)
-        parser.add_argument('--dry-run', '-n', help="Pretend to run the actions",
-            action="store_true", default=Default(False))
-        parser.add_argument('--initial', '-i', nargs='*',
-            help="Set alternate initial categories", default=Default(tuple()))
-        parser.add_argument('--strict', help="Stop on warnings",
-            action="store_true", default=Default(False))
-        parser.add_argument('--target', '-t', help="Write generated files to TARGET",
-            default=Default(''))
+        parser.add_argument(
+            '--prefs', '-p', nargs='*', default=constants.CONFIG_FILES,
+            help="Read user preferences from PREF files", metavar='PREF',
+        )
+        parser.add_argument(
+            '--version', '-V', action='version',
+            version='%(prog)s ' + __version__, help="Display version",
+        )
+        parser.add_argument(
+            '--dry-run', '-n', action='store_true',
+            default=Default(False), help="Pretend to run the actions",
+        )
+        parser.add_argument(
+            '--initial', '-i', nargs='*',
+            help="Set alternate initial categories", default=Default(tuple()),
+        )
+        parser.add_argument(
+            '--strict', help="Stop on warnings", action="store_true",
+            default=Default(False),
+        )
+        parser.add_argument(
+            '--target', '-t',
+            default=Default(''), help="Write generated files to TARGET",
+        )
 
     # Registering commands
     # --------------------
 
     def register_command(self, command_class):
         """Register a new command from its class."""
-        cmd_parser = self.subparsers.add_parser(command_class.get_name(),
-            help=command_class.get_help())
+        cmd_parser = self.subparsers.add_parser(
+            command_class.get_name(),
+            help=command_class.get_help(),
+        )
+
         self.register_options(cmd_parser)
         command_class.register_options(cmd_parser)
         cmd_parser.set_defaults(command=command_class)

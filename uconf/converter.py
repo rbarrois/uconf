@@ -8,6 +8,10 @@ import re
 from uconf import rule_parser
 
 
+class CommandError(Exception):
+    pass
+
+
 class FileProcessor(object):
     """Handles 'standard' processing of a file.
 
@@ -139,7 +143,7 @@ class Backporter(object):
                     continue
                 elif action == 'equal':
                     # No change
-                    yield line.origina
+                    yield line.original
                 else:
                     assert action == "replace"
                     # Backport the resulting line
@@ -237,8 +241,7 @@ class BlockStack(object):
             raise ValueError("Not inside a block.")
         last_kind = self.blocks[-1].kind
         if last_kind != kind:
-            raise ValueError("Unexpected last block kind: %s!=%s." %
-                (last_kind, kind))
+            raise ValueError("Unexpected last block kind: %s!=%s." % (last_kind, kind))
         return self.blocks.pop()
 
 
@@ -360,7 +363,10 @@ class WithBlockCommand(BaseBlockCommand):
     def exit(self, key, argline, state, config):
         last_block = state.leave_block(Block.KIND_WITH)
         if argline and argline not in last_block.context:
-            raise CommandError("Block mismatch: closing 'with' block from line %d with invalid variable %r" % (last_block.start_line, argline))
+            raise CommandError(
+                "Block mismatch: closing 'with' block from line %d with invalid variable %r"
+                % (last_block.start_line, argline),
+            )
 
 
 class GeneratorState(object):
@@ -374,7 +380,6 @@ class GeneratorState(object):
 
     def __init__(self):
         self.block_stack = BlockStack()
-
         self._current_lineno = 0
 
     @property
@@ -387,7 +392,7 @@ class GeneratorState(object):
 
     def error(self, message, *args):
         err_msg = "Error on line %d: " % self._current_lineno
-        raise ValueError(error + message % args)
+        raise ValueError((err_msg + message) % args)
 
     def advance_to(self, lineno):
         self._current_lineno = lineno
@@ -432,8 +437,10 @@ class Generator(object):
         for command in commands:
             for key in command.get_keys():
                 if key in self.commands_by_key:
-                    raise ValueError("Duplicate command for key %s: got %r and %r"
-                        % (key, command, self.commands_by_key[key]))
+                    raise ValueError(
+                        "Duplicate command for key %s: got %r and %r"
+                        % (key, command, self.commands_by_key[key]),
+                    )
                 self.commands_by_key[key] = command
 
     def __iter__(self):
@@ -459,7 +466,6 @@ class Generator(object):
 
             yield Line(output, line)
 
-
     def handle_line(self, prefix, command):
         if command.startswith('#'):
             # A comment
@@ -467,7 +473,7 @@ class Generator(object):
 
         elif command.startswith('@'):
             # An escaped line
-            return prefix + line[1:]
+            return prefix + command[1:]
 
         else:
             if ' ' in command:
@@ -495,7 +501,8 @@ class GeneratorConfig(object):
         self.generator_class = generator
 
     def load(self, source_file):
-        return self.generator_class(source_file,
+        return self.generator_class(
+            source_file,
             config=self,
             commands=self.commands,
         )

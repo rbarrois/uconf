@@ -15,6 +15,7 @@ import os.path
 
 from . import helpers
 
+
 class PorcelainError(Exception):
     def __init__(self, user_message):
         self.user_message = user_message
@@ -25,8 +26,7 @@ class Porcelain(object):
     def __init__(self, env, active_repo=None):
         self.env = env
         self.active_repo = active_repo
-        self.logger = logging.getLogger(
-            '%s.%s' % (__name__, self.__class__.__name__))
+        self.logger = logging.getLogger('%s.%s' % (__name__, self.__class__.__name__))
 
     def handle(self, *args, **kwargs):
         """Run the porcelain command.
@@ -47,8 +47,7 @@ class ImportFiles(Porcelain):
             return ''
 
         if action_params:
-            text = '%s %s' % (text,
-                ' '.join('%s=%s' % param for param in action_params))
+            text = '%s %s' % (text, ' '.join('%s=%s' % param for param in action_params))
         return text
 
     def _prepare_files(self, targets, storage_folder=None):
@@ -62,21 +61,21 @@ class ImportFiles(Porcelain):
 
         targets = [
             helpers.get_relative_path(target_root, target, base=target_root)
-            for target in targets]
+            for target in targets
+        ]
 
         if storage_folder:
-            storage_folder = helpers.get_relative_path(
-                self.env.root, storage_folder, base=self.env.root)
+            storage_folder = helpers.get_relative_path(self.env.root, storage_folder, base=self.env.root)
 
             return [
                 (os.path.join(storage_folder, os.path.basename(t)), t)
-                for t in targets]
+                for t in targets
+            ]
 
         else:
             return [(t, t) for t in targets]
 
-    def handle(self, files, categories, action=None, action_params=(),
-            folder=None, *args, **kwargs):
+    def handle(self, files, categories, action=None, action_params=(), folder=None, *args, **kwargs):
         files_config = self.env.repository.files_config
         actions_config = self.env.repository.actions_config
 
@@ -86,11 +85,9 @@ class ImportFiles(Porcelain):
 
         # Add to the 'files' section
         if files_text in list(files_config[categories]):
-            self.logger.warning("Files '%s' already registered for categories %r",
-                files_text, categories)
+            self.logger.warning("Files '%s' already registered for categories %r", files_text, categories)
         else:
-            self.logger.info("Registering files '%s' for categories %r",
-                files_text, categories)
+            self.logger.info("Registering files '%s' for categories %r", files_text, categories)
             files_config.add(categories, files_text)
 
         # Handle dedicated action/options for files
@@ -101,8 +98,7 @@ class ImportFiles(Porcelain):
 
             action_text = self._make_action_text(action, file_params)
             if action_text:
-                self.logger.info("Adding rule %r for files '%s'",
-                    action_text, storage)
+                self.logger.info("Adding rule %r for files '%s'", action_text, storage)
                 actions_config[storage] = action_text
 
         # Write out the configuration
@@ -156,8 +152,10 @@ class FilePorcelain(Porcelain):
             raise PorcelainError("This porcelain command requires an active repository.")
 
         try:
-            file_config = self.active_repo.get_file_config(filename,
-                    default_action=self.env.get('default_action', 'parse'))
+            file_config = self.active_repo.get_file_config(
+                filename,
+                default_action=self.env.get('default_action', 'parse'),
+            )
         except KeyError:
             raise PorcelainError("File %s not in repository." % filename)
 
@@ -183,8 +181,10 @@ class DiffFile(FilePorcelain):
         action = file_config.get_action(filename, self.env)
         planned, actual = action.diff(self.active_repo.categories)
         if planned != actual:
-            diff = difflib.unified_diff(actual, planned,
-                fromfile=action.destination, tofile=action.destination, lineterm='')
+            diff = difflib.unified_diff(
+                actual, planned,
+                fromfile=action.destination, tofile=action.destination, lineterm='',
+            )
             diff = ('',) + tuple(diff)
             diff = '\n'.join(diff)
             self.logger.info("File %s has changed: %s", filename, diff)
@@ -195,8 +195,10 @@ class BackDiffFile(FilePorcelain):
         action = file_config.get_action(filename, self.env)
         planned, actual = action.backdiff(self.active_repo.categories)
         if planned != actual:
-            diff = difflib.unified_diff(actual, planned,
-                fromfile=action.source, tofile=action.source, lineterm='')
+            diff = difflib.unified_diff(
+                actual, planned,
+                fromfile=action.source, tofile=action.source, lineterm='',
+            )
             diff = ('',) + tuple(diff)
             diff = '\n'.join(diff)
             self.logger.info("File %s has changed: %s", filename, diff)

@@ -4,8 +4,6 @@
 
 """Handles parsing of rules."""
 
-import re
-
 import tdparser
 
 
@@ -198,6 +196,7 @@ class _OrToken(tdparser.Token):
 
     def __repr__(self):
         return '<Or>'
+
 
 class _AndToken(tdparser.Token):
     lbp = 15

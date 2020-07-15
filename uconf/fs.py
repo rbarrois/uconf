@@ -6,11 +6,7 @@ from __future__ import unicode_literals, absolute_import
 
 """Abstract the filesystem layer."""
 
-import hashlib
-import io
 import logging
-import os
-import stat
 
 import fslib
 import fslib.builders
@@ -64,9 +60,9 @@ class FSLoader(object):
             if self.dry_run:
                 for path, lenth in self.get_changes():
                     logger.info("[Dry-run] Updated path %s (%d bytes)", path, lenth)
-        except:
+        except Exception as e:
             # Something went wrong while deleting ourselves.
-            pass
+            logger.exception("Failure while deleting %r: %r", self, e)
 
     def __getattr__(self, name):
         return getattr(self.fs, name)

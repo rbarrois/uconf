@@ -20,7 +20,6 @@ import confutils
 
 from . import action_parser
 from . import actions
-from . import compat
 from . import constants
 from . import fs
 from . import helpers
@@ -54,8 +53,7 @@ class FileConfig(object):
             destination = self.options['dest']
         elif 'destdir' in self.options:
             # Replaced destination folder
-            destination = os.path.join(self.options['destdir'],
-                os.path.basename(filename))
+            destination = os.path.join(self.options['destdir'], os.path.basename(filename))
         else:
             destination = filename
 
@@ -66,8 +64,7 @@ class FileConfig(object):
         abs_source = helpers.get_absolute_path(filename, base=env.root)
         abs_dest = self.get_destination(filename, env.target)
 
-        return action(source=abs_source, destination=abs_dest,
-            env=env, **self.options)
+        return action(source=abs_source, destination=abs_dest, env=env, **self.options)
 
     def __repr__(self):
         return '<FileConfig: %s %r>' % (self.action, self.options)
@@ -249,7 +246,7 @@ class Env(object):
 
     def getlist(self, key, default=(), separator=' '):
         value = self.get(key, default=default)
-        if isinstance(value, compat.text_types):
+        if isinstance(value, str):
             value = value.split(separator)
         return list(value)
 
@@ -259,32 +256,40 @@ class Env(object):
 
     def get_forward_fs(self):
         if self._forward_fs is None:
-            self._forward_fs = fs.FSLoader(self.target,
-                    dry_run=self.get('dry_run', False),
-                    default_encoding=self.get('file_encoding', 'utf8'))
+            self._forward_fs = fs.FSLoader(
+                self.target,
+                dry_run=self.get('dry_run', False),
+                default_encoding=self.get('file_encoding', 'utf8'),
+            )
         return self._forward_fs
 
     def get_backward_fs(self):
         if self._backward_fs is None:
-            self._backward_fs = fs.FSLoader(self.root,
-                    dry_run=self.get('dry_run', False),
-                    default_encoding=self.get('file_encoding', 'utf8'))
+            self._backward_fs = fs.FSLoader(
+                self.root,
+                dry_run=self.get('dry_run', False),
+                default_encoding=self.get('file_encoding', 'utf8'),
+            )
         return self._backward_fs
 
     def get_uconf_fs(self):
         """Retrieve the filesystem associated with the private uconf dir."""
         if self._uconf_fs is None:
-            self._uconf_fs = fs.FSLoader(self.uconf_dir,
-                    dry_run=self.get('dry_run', False),
-                    default_encoding=self.get('file_encoding', 'utf8'))
+            self._uconf_fs = fs.FSLoader(
+                self.uconf_dir,
+                dry_run=self.get('dry_run', False),
+                default_encoding=self.get('file_encoding', 'utf8'),
+            )
         return self._uconf_fs
 
     def get_repo_fs(self):
         """Retrieve a filesystem for the repository, including uconf."""
         if self._repo_fs is None:
-            self._repo_fs = fs.FSLoader(self.root,
-                    dry_run=self.get('dry_run', False),
-                    default_encoding=self.get('file_encoding', 'utf8'))
+            self._repo_fs = fs.FSLoader(
+                self.root,
+                dry_run=self.get('dry_run', False),
+                default_encoding=self.get('file_encoding', 'utf8'),
+            )
         return self._repo_fs
 
     @classmethod
@@ -316,8 +321,7 @@ class Env(object):
             config.parse_file(config_file, skip_unreadable=True)
 
         if repo_root:
-            repo_config = os.path.join(repo_root,
-                constants.REPO_SUBFOLDER, 'config')
+            repo_config = os.path.join(repo_root, constants.REPO_SUBFOLDER, 'config')
             config.parse_file(repo_config, skip_unreadable=False)
 
         return repo_root, config
@@ -336,8 +340,7 @@ class Env(object):
         return merged
 
     @classmethod
-    def from_files(cls, repo_root=None, config_files=constants.CONFIG_FILES,
-            sections=(), extra=None):
+    def from_files(cls, repo_root=None, config_files=constants.CONFIG_FILES, sections=(), extra=None):
         """Build a Env from basic informations:
 
         - Path to a repository root
@@ -346,8 +349,7 @@ class Env(object):
         - Dict of extra configuration values
         """
 
-        repo_root, config = cls._read_config(repo_root=repo_root,
-                config_files=config_files)
+        repo_root, config = cls._read_config(repo_root=repo_root, config_files=config_files)
 
         repo = Repository(root=repo_root)
 

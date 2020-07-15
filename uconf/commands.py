@@ -5,16 +5,17 @@
 
 from __future__ import unicode_literals
 
+import logging
 import os.path
 import sys
 
 from confutils import Default
 
 from . import __version__
-from . import config
-from . import fs
 from . import helpers
 from . import porcelain
+
+logger = logging.getLogger(__name__)
 
 
 class UConfError(Exception):
@@ -74,8 +75,10 @@ class BaseCommand(object):
     def check_required_config(self):
         for field in self.required_config_fields:
             if not self.env.isset(field):
-                raise ConfigError("Field '%s' must be set, either in config files "
-                    "or through command-line arguments." % field)
+                raise ConfigError(
+                    "Field '%s' must be set, either in config files "
+                    "or through command-line arguments." % field,
+                )
 
     def warning(self, message, *args):
         self.stderr.write(message % args)
@@ -118,9 +121,9 @@ class Init(BaseCommand):
 
     def run(self):
         self.env.root = self.env.get('root')
-        fs = self.env.get_repo_fs()
-        fs.makedir(env.uconf_dir, recursive=True, allow_recreate=True)
-        fs.writelines(os.path.join(env.uconf_dir, 'config'), [])
+        repo_fs = self.env.get_repo_fs()
+        repo_fs.makedir(self.env.uconf_dir, recursive=True, allow_recreate=True)
+        repo_fs.writelines(os.path.join(self.env.uconf_dir, 'config'), [])
 
 
 class WithRepoCommand(BaseCommand):
@@ -152,8 +155,10 @@ class Make(WithRepoCommand):
 
     @classmethod
     def register_options(cls, parser):
-        parser.add_argument('files', nargs='*', default=Default(tuple()),
-            help="Build selected files, all valid if empty.")
+        parser.add_argument(
+            'files', nargs='*', default=Default(tuple()),
+            help="Build selected files, all valid if empty.",
+        )
         super(Make, cls).register_options(parser)
 
     def run(self):
@@ -176,8 +181,10 @@ class Back(WithRepoCommand):
 
     @classmethod
     def register_options(cls, parser):
-        parser.add_argument('files', nargs='*', default=Default(tuple()),
-            help="Backport selected files, all valid if empty.")
+        parser.add_argument(
+            'files', nargs='*', default=Default(tuple()),
+            help="Backport selected files, all valid if empty.",
+        )
         super(Back, cls).register_options(parser)
 
     def run(self):
@@ -200,8 +207,10 @@ class Diff(WithRepoCommand):
 
     @classmethod
     def register_options(cls, parser):
-        parser.add_argument('files', nargs='*', default=Default(tuple()),
-            help="Compute diff of selected files, all valid if empty.")
+        parser.add_argument(
+            'files', nargs='*', default=Default(tuple()),
+            help="Compute diff of selected files, all valid if empty.",
+        )
         super(Diff, cls).register_options(parser)
 
     def run(self):
@@ -224,8 +233,10 @@ class BackDiff(WithRepoCommand):
 
     @classmethod
     def register_options(cls, parser):
-        parser.add_argument('files', nargs='*', default=Default(tuple()),
-            help="Compute backward diff of selected files, all valid if empty.")
+        parser.add_argument(
+            'files', nargs='*', default=Default(tuple()),
+            help="Compute backward diff of selected files, all valid if empty.",
+        )
         super(BackDiff, cls).register_options(parser)
 
     def run(self):
@@ -245,15 +256,20 @@ class ImportFile(WithRepoCommand):
     @classmethod
     def register_options(cls, parser):
         parser.add_argument('files', nargs='+', help="Add the selected files")
-        parser.add_argument('--categories', required=True,
-            help="Import into the selected category")
-        parser.add_argument('--action', nargs='?',
-            help="Build with the selected action")
-        parser.add_argument('--action-params', nargs='*', default=Default(()),
-            help="Extra parameters for the selected action")
+        parser.add_argument(
+            '--categories', required=True,
+            help="Import into the selected category",
+        )
+        parser.add_argument(
+            '--action', nargs='?',
+            help="Build with the selected action",
+        )
+        parser.add_argument(
+            '--action-params', nargs='*', default=Default(()),
+            help="Extra parameters for the selected action",
+        )
         destination_group = parser.add_mutually_exclusive_group()
-        destination_group.add_argument('--folder',
-            help="Store the files in the given folder")
+        destination_group.add_argument('--folder', help="Store the files in the given folder")
         super(ImportFile, cls).register_options(parser)
 
     def run(self):
@@ -264,7 +280,7 @@ class ImportFile(WithRepoCommand):
             files=self.env.get('files'),
             categories=self.env.get('categories'),
             action=self.env.get('action'),
-            action_params=self.env.get('action_params', ()),
+            action_params=action_params,
             folder=self.env.get('folder'),
         )
 
@@ -294,8 +310,7 @@ class ListFiles(WithRepoCommand):
         target = self.env.target
         for filename in sorted(self.active_repository.iter_files()):
             file_config = self.active_repository.get_file_config(filename)
-            self.info("%s -> %s", filename,
-                file_config.get_destination(filename, target))
+            self.info("%s -> %s", filename, file_config.get_destination(filename, target))
 
 
 class ListCategories(WithRepoCommand):
