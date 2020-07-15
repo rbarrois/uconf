@@ -126,45 +126,53 @@ class BlockStackTestCase(unittest.TestCase):
 
     def test_empty_nolookup(self):
         s = converter.BlockStack()
-        self.assertRaises(KeyError, s.get, 'foo')
+        self.assertIsNone(s.merged_context.get('foo'))
 
     def test_simple_keyerror(self):
         s = converter.BlockStack()
         s.enter(converter.Block.KIND_IF, published=True, start_line=1)
-        self.assertRaises(KeyError, s.get, 'foo')
+        self.assertIsNone(s.merged_context.get('foo'))
 
     def test_simple_lookup(self):
         s = converter.BlockStack()
         s.enter(converter.Block.KIND_WITH, context={'bar': 'baz'}, start_line=1)
-        self.assertRaises(KeyError, s.get, 'foo')
-        self.assertEqual('baz', s.get('bar'))
+        self.assertIsNone(s.merged_context.get('foo'))
+        self.assertEqual('baz', s.merged_context.get('bar'))
 
     def test_stack_lookup(self):
         s = converter.BlockStack()
         s.enter(converter.Block.KIND_WITH, context={'bar': 1}, start_line=1)
         s.enter(converter.Block.KIND_WITH, context={'baz': 4}, start_line=2)
         s.enter(converter.Block.KIND_WITH, context={'bar': 3}, start_line=3)
-        self.assertRaises(KeyError, s.get, 'foo')
-        self.assertEqual(4, s.get('baz'))
-        self.assertEqual(3, s.get('bar'))
+        self.assertIsNone(s.merged_context.get('foo'))
+        self.assertEqual(4, s.merged_context.get('baz'))
+        self.assertEqual(3, s.merged_context.get('bar'))
 
     def test_stack_lookup_leave(self):
         s = converter.BlockStack()
         s.enter(converter.Block.KIND_WITH, context={'bar': 1}, start_line=1)
         s.enter(converter.Block.KIND_WITH, context={'baz': 4}, start_line=2)
         s.enter(converter.Block.KIND_WITH, context={'bar': 3}, start_line=3)
-        self.assertRaises(KeyError, s.get, 'foo')
-        self.assertEqual(4, s.get('baz'))
-        self.assertEqual(3, s.get('bar'))
+        self.assertIsNone(s.merged_context.get('foo'))
+        self.assertEqual(4, s.merged_context.get('baz'))
+        self.assertEqual(3, s.merged_context.get('bar'))
         s.leave(converter.Block.KIND_WITH)
-        self.assertEqual(4, s.get('baz'))
-        self.assertEqual(1, s.get('bar'))
+        self.assertEqual(4, s.merged_context.get('baz'))
+        self.assertEqual(1, s.merged_context.get('bar'))
         s.leave(converter.Block.KIND_WITH)
-        self.assertRaises(KeyError, s.get, 'baz')
-        self.assertEqual(1, s.get('bar'))
+        self.assertIsNone(s.merged_context.get('baz'))
+        self.assertEqual(1, s.merged_context.get('bar'))
 
 
 class GeneratorTestCase(unittest.TestCase):
+    def make_generator(self, lines, categories):
+        config = converter.GeneratorConfig(
+            categories=categories,
+            commands=[cmd_class() for cmd_class in converter.DEFAULT_COMMANDS],
+            fs=None,
+        )
+        return config.load(lines)
+
     def test_no_special(self):
         txt = [
             'foo',
@@ -172,7 +180,7 @@ class GeneratorTestCase(unittest.TestCase):
             'baz',
         ]
 
-        g = converter.Generator(txt, categories=[], fs=None)
+        g = self.make_generator(txt, categories=[])
         expected = [converter.Line(s, s) for s in txt]
         out = list(g)
         self.assertEqual(expected, out)
@@ -186,7 +194,7 @@ class GeneratorTestCase(unittest.TestCase):
             'baz',
         ]
 
-        g = converter.Generator(txt, categories=['blih'], fs=None)
+        g = self.make_generator(txt, categories=['blih'])
         expected = [
             converter.Line('foo', 'foo'),
             converter.Line(None, '#@if blah'),
@@ -204,7 +212,7 @@ class GeneratorTestCase(unittest.TestCase):
             'bar',
         ]
 
-        g = converter.Generator(txt, categories=['blih'], fs=None)
+        g = self.make_generator(txt, categories=['blih'])
         expected = [
             converter.Line('foo', 'foo'),
             converter.Line(None, '#@if blah'),
@@ -222,7 +230,7 @@ class GeneratorTestCase(unittest.TestCase):
             'baz',
         ]
 
-        g = converter.Generator(txt, categories=['blah'], fs=None)
+        g = self.make_generator(txt, categories=['blah'])
         expected = [
             converter.Line('foo', 'foo'),
             converter.Line(None, '#@if blah'),
@@ -240,7 +248,7 @@ class GeneratorTestCase(unittest.TestCase):
             'bar',
         ]
 
-        g = converter.Generator(txt, categories=['blah'], fs=None)
+        g = self.make_generator(txt, categories=['blah'])
         expected = [
             converter.Line('foo', 'foo'),
             converter.Line(None, '#@if blah'),
@@ -262,7 +270,7 @@ class GeneratorTestCase(unittest.TestCase):
             'baz',
         ]
 
-        g = converter.Generator(txt, categories=['blih'], fs=None)
+        g = self.make_generator(txt, categories=['blih'])
         expected = [
             converter.Line('foo', 'foo'),
             converter.Line(None, '#@if blah'),

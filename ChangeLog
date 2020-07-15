@@ -4,6 +4,7 @@ v0.4.0 (2020-07-15)
 *Misc:*
 
     * Drop Python 2 compatibility
+    * Fix tests
 
 v0.3.8 (2014-03-08)
 ===================
