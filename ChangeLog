@@ -6,6 +6,10 @@ v0.4.0 (2020-07-15)
     * Drop Python 2 compatibility
     * Fix tests
 
+*Bugfix:*
+
+    * Fix 'diff' mode when copying to a non-existent file
+
 v0.3.8 (2014-03-08)
 ===================
 

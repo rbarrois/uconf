@@ -88,9 +88,12 @@ class CopyAction(BaseAction):
         self.fs.copy(self.destination, self.source)
 
     def _diff(self, categories):
-        source_hash = self.fs.get_hash(self.source)
-        dest_hash = self.fs.get_hash(self.destination)
-        return [source_hash.hexdigest()], [dest_hash.hexdigest()]
+        source_hash = self.fs.get_hash(self.source).hexdigest()
+        if self.fs.file_exists(self.destination):
+            dest_hash = self.fs.get_hash(self.destination).hexdigest()
+        else:
+            dest_hash = '!' * len(source_hash)
+        return [source_hash], [dest_hash]
 
     def _backdiff(self, categories):
         source, dest = self._diff(categories)
