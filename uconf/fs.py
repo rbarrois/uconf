@@ -2,8 +2,6 @@
 # Copyright (c) 2010-2013 Raphaël Barrois
 # This software is distributed under the two-clause BSD license.
 
-from __future__ import unicode_literals, absolute_import
-
 """Abstract the filesystem layer."""
 
 import logging
@@ -19,7 +17,7 @@ logger = logging.getLogger(__name__)
 FSError = fslib.FSError
 
 
-class FSLoader(object):
+class FSLoader:
     def __init__(self, *write_paths, **kwargs):
         self.dry_run = kwargs.pop('dry_run', False)
         self.default_encoding = kwargs.pop('default_encoding', 'utf-8')

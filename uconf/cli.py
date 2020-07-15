@@ -3,9 +3,6 @@
 # This software is distributed under the two-clause BSD license.
 
 
-from __future__ import unicode_literals
-
-
 """Parse command-line arguments.
 
 The CLI parsing is a three-step process:
@@ -34,7 +31,7 @@ from . import __version__
 Default = confutils.Default
 
 
-class CLI(object):
+class CLI:
     """Command-line interface.
 
     Attributes:

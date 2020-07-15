@@ -26,7 +26,7 @@ from . import helpers
 from . import rule_parser
 
 
-class FileConfig(object):
+class FileConfig:
     """Definition of the action for a file."""
 
     COPY = 'copy'
@@ -70,7 +70,7 @@ class FileConfig(object):
         return '<FileConfig: %s %r>' % (self.action, self.options)
 
 
-class GlobStore(object):
+class GlobStore:
     def __init__(self, *args):
         self.entries = list(*args)
 
@@ -96,7 +96,7 @@ class GlobStore(object):
         return "GlobStore(%r)" % self.entries
 
 
-class RepositoryView(object):
+class RepositoryView:
     """A repository, as seen for a given set of initial categories.
 
     Attributes:
@@ -129,7 +129,7 @@ class RepositoryView(object):
         return self.base.file_configs.get(filename, default_config)
 
 
-class Repository(object):
+class Repository:
     """Holds repository configuration.
 
     Attributes:
@@ -212,7 +212,7 @@ class Repository(object):
             self.file_configs[filename] = FileConfig(action, **options)
 
 
-class Env(object):
+class Env:
     """Holds all configuration for the current environment.
 
     Attributes:

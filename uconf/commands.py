@@ -3,8 +3,6 @@
 # This software is distributed under the two-clause BSD license.
 
 
-from __future__ import unicode_literals
-
 import logging
 import os.path
 import sys
@@ -26,7 +24,7 @@ class ConfigError(UConfError):
     pass
 
 
-class BaseCommand(object):
+class BaseCommand:
     """Base command object."""
     name = ''
     help = ''
@@ -130,7 +128,7 @@ class WithRepoCommand(BaseCommand):
     """Enhanced base command class with list of rules already parsed."""
 
     def __init__(self, *args, **kwargs):
-        super(WithRepoCommand, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         initial_cats = self.env.getlist('initial', helpers.get_hostnames())
         self.active_repository = self.env.get_active_repository(initial_cats)
@@ -159,7 +157,7 @@ class Make(WithRepoCommand):
             'files', nargs='*', default=Default(tuple()),
             help="Build selected files, all valid if empty.",
         )
-        super(Make, cls).register_options(parser)
+        super().register_options(parser)
 
     def run(self):
         p = porcelain.MakeFile(self.env, self.active_repository)
@@ -185,7 +183,7 @@ class Back(WithRepoCommand):
             'files', nargs='*', default=Default(tuple()),
             help="Backport selected files, all valid if empty.",
         )
-        super(Back, cls).register_options(parser)
+        super().register_options(parser)
 
     def run(self):
         p = porcelain.BackFile(self.env, self.active_repository)
@@ -211,7 +209,7 @@ class Diff(WithRepoCommand):
             'files', nargs='*', default=Default(tuple()),
             help="Compute diff of selected files, all valid if empty.",
         )
-        super(Diff, cls).register_options(parser)
+        super().register_options(parser)
 
     def run(self):
         p = porcelain.DiffFile(self.env, self.active_repository)
@@ -237,7 +235,7 @@ class BackDiff(WithRepoCommand):
             'files', nargs='*', default=Default(tuple()),
             help="Compute backward diff of selected files, all valid if empty.",
         )
-        super(BackDiff, cls).register_options(parser)
+        super().register_options(parser)
 
     def run(self):
         p = porcelain.BackDiffFile(self.env, self.active_repository)
@@ -270,7 +268,7 @@ class ImportFile(WithRepoCommand):
         )
         destination_group = parser.add_mutually_exclusive_group()
         destination_group.add_argument('--folder', help="Store the files in the given folder")
-        super(ImportFile, cls).register_options(parser)
+        super().register_options(parser)
 
     def run(self):
         action_params = list(self.env.get('action_params', ()))
@@ -293,7 +291,7 @@ class RenameFile(WithRepoCommand):
     def register_options(cls, parser):
         parser.add_argument('source', help="The file to rename")
         parser.add_argument('dest', help="The new path")
-        super(RenameFile, cls).register_options(parser)
+        super().register_options(parser)
 
     def run(self):
         source = self.env.get('source')

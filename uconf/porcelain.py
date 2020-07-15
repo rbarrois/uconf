@@ -3,9 +3,6 @@
 # This software is distributed under the two-clause BSD license.
 
 
-from __future__ import absolute_import, unicode_literals
-
-
 """Low level actions for uconf."""
 
 
@@ -19,10 +16,10 @@ from . import helpers
 class PorcelainError(Exception):
     def __init__(self, user_message):
         self.user_message = user_message
-        super(PorcelainError, self).__init__()
+        super().__init__()
 
 
-class Porcelain(object):
+class Porcelain:
     def __init__(self, env, active_repo=None):
         self.env = env
         self.active_repo = active_repo

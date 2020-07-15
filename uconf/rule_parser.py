@@ -9,7 +9,7 @@ import tdparser
 
 # {{{ Nodes
 
-class _ConditionNode(object):
+class _ConditionNode:
     """Base class for a node."""
 
     def eval(self, atoms):
@@ -225,7 +225,7 @@ class _NotToken(tdparser.Token):
 # {{{ Lexer
 
 
-class RuleLexer(object):
+class RuleLexer:
     """Build a rule lexer
 
     Some possible patterns:
@@ -248,7 +248,8 @@ class RuleLexer(object):
 # }}}
 # {{{ Rule
 
-class Rule(object):
+
+class Rule:
     def __init__(self, text, node):
         self.text = text
         self.node = node

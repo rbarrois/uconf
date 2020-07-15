@@ -12,7 +12,7 @@ class CommandError(Exception):
     pass
 
 
-class FileProcessor(object):
+class FileProcessor:
     """Handles 'standard' processing of a file.
 
     Attributes:
@@ -59,7 +59,7 @@ class FileProcessor(object):
             yield line
 
 
-class Differ(object):
+class Differ:
     """Computes differences between two files (as string lists).
 
     Based on difflib.SequenceMatcher, but yields atomic operations.
@@ -100,7 +100,7 @@ class Differ(object):
                     yield ('delete', self.original[original_lineno])
 
 
-class Backporter(object):
+class Backporter:
     """Handles the backporting of a diff to an original file.
 
     Attributes:
@@ -156,7 +156,7 @@ class Backporter(object):
             yield self.reverse(output)
 
 
-class Line(object):
+class Line:
     def __init__(self, output, original):
         self.output = output
         self.original = original
@@ -188,7 +188,7 @@ class Line(object):
             self.original = self.output
 
 
-class Block(object):
+class Block:
     KIND_IF = 'if'
     KIND_WITH = 'with'
 
@@ -207,7 +207,7 @@ class Block(object):
         )
 
 
-class BlockStack(object):
+class BlockStack:
     def __init__(self):
         self.blocks = []
 
@@ -245,7 +245,7 @@ class BlockStack(object):
         return self.blocks.pop()
 
 
-class BaseCommand(object):
+class BaseCommand:
     """A command.
 
     Entry points: get_keys(), handle(...).
@@ -301,7 +301,7 @@ class IfBlockCommand(BaseBlockCommand):
     exit_keys = ('endif',)
 
     def __init__(self, **kwargs):
-        super(IfBlockCommand, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.rule_lexer = rule_parser.RuleLexer()
 
     def enter(self, key, argline, state, config):
@@ -369,7 +369,7 @@ class WithBlockCommand(BaseBlockCommand):
             )
 
 
-class GeneratorState(object):
+class GeneratorState:
     """Handles the internal generator state.
 
     Attributes:
@@ -412,14 +412,13 @@ class GeneratorState(object):
             self.invalid("Error when closing block: %r", e)
 
 
-
 DEFAULT_COMMANDS = [
     IfBlockCommand,
     WithBlockCommand,
 ]
 
 
-class Generator(object):
+class Generator:
     """Generate the output from a source.
 
     Attributes:
@@ -492,7 +491,7 @@ class Generator(object):
         handler.handle(command, args, self.state, self.config)
 
 
-class GeneratorConfig(object):
+class GeneratorConfig:
     def __init__(self, categories, commands, fs, generator=Generator):
         self.categories = categories
         self.commands = commands

@@ -96,7 +96,7 @@ class SingleQuotedTextToken(BaseQuotedTextToken):
     regexp = r"'([^\\']|\\.)*'"
 
 
-class ActionLexer(object):
+class ActionLexer:
     def __init__(self, lexer=None):
         self.lexer = lexer or self._build_lexer()
 

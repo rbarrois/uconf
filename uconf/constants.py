@@ -3,9 +3,6 @@
 # This software is distributed under the two-clause BSD license.
 
 
-from __future__ import unicode_literals, absolute_import
-
-
 """config.h-style file holding all global constants for uconf."""
 
 

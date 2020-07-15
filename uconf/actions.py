@@ -27,7 +27,7 @@ def catch_fs_exceptions(fun):
     return decorated
 
 
-class BaseAction(object):
+class BaseAction:
     def __init__(self, source, destination, env, **kwargs):
         self.source = source
         self.destination = destination
