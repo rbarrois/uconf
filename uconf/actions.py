@@ -112,9 +112,26 @@ class SymLinkAction(BaseAction):
     def _forward(self, categories):
         self.fs.create_symlink(
             link_name=self.destination,
-            link_target=self.source,
+            target=self.source,
             relative=False,
-            force=False)
+            force=False,
+        )
+
+    def _backward(self, categories):
+        pass
+
+    def _diff(self, categories):
+        if self.fs.symlink_exists(self.destination):
+            target = 'link: ' + self.fs.readlink(self.destination)
+        elif self.fs.file_exists(self.destination):
+            target = 'reg: ' + self.fs.get_hash(self.destination).hexdigest()
+        else:
+            target = '<none>'
+        return ['link: ' + self.source], [target]
+
+    def _backdiff(self, categories):
+        source, dest = self._diff(categories)
+        return dest, source
 
 
 class FileContentAction(BaseAction):
