@@ -1,3 +1,10 @@
+v0.4.1 (unreleased)
+===================
+
+*Bugfix:*
+
+    * Allow copying symlinks
+
 v0.4.0 (2020-07-15)
 ===================
 

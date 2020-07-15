@@ -1,5 +1,5 @@
 # File access
-fslib>=0.2.0
+fslib>=0.3.4
 
 # Parsing
 tdparser

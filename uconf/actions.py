@@ -81,11 +81,18 @@ class BaseAction:
 
 
 class CopyAction(BaseAction):
+    def _copy_or_symlink(self, source, destination):
+        if self.fs.symlink_exists(source):
+            target = self.fs.readlink(source)
+            self.fs.symlink(destination, target)
+        else:
+            self.fs.copy(source, destination)
+
     def _forward(self, categories):
-        self.fs.copy(self.source, self.destination)
+        self._copy_or_symlink(self.source, self.destination)
 
     def _backward(self, categories):
-        self.fs.copy(self.destination, self.source)
+        self._copy_or_symlink(self.destination, self.source)
 
     def _diff(self, categories):
         source_hash = self.fs.get_hash(self.source).hexdigest()
