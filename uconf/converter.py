@@ -131,12 +131,12 @@ class Backporter:
                 yield line.original
 
             else:
-                action, output = diff.next()
+                action, output = next(diff)
                 while action == 'insert':
                     # Inserting lines
                     # Always include, without forwarding the source
                     yield self.reverse(output)
-                    action, output = diff.next()
+                    action, output = next(diff)
 
                 if action == 'delete':
                     # Deleting one line, advance the source
